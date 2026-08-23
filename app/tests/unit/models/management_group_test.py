@@ -1,5 +1,5 @@
 import pytest
-from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from app.models import Company, Department, ManagementGroup
 
 
@@ -25,36 +25,29 @@ class TestManagementGroupModel:
         assert group.is_admin is False
         assert group.department == department
 
-    # is_admin=Falseなのに部門が未設定の場合はエラーになることを確認
+    # is_admin=Falseなのに部門が未設定の場合はエラーになることを確認(DB制約。Serviceの事前条件チェックが一次防衛)
     def test_department_required_when_not_admin(self):
-        with pytest.raises(ValidationError):
+        with pytest.raises(IntegrityError):
             ManagementGroup.objects.create(name='不正なグループ', permission_set_id=1)
 
-    # is_admin=Trueなのに部門が設定されている場合はエラーになることを確認
+    # is_admin=Trueなのに部門が設定されている場合はエラーになることを確認(DB制約。Serviceの事前条件チェックが一次防衛)
     def test_department_forbidden_when_admin(self):
         department = _create_department('開発部')
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(IntegrityError):
             ManagementGroup.objects.create(name='不正なグループ', is_admin=True, department=department)
 
-    # is_admin=Falseなのに権限セット番号が未設定の場合はエラーになることを確認
+    # is_admin=Falseなのに権限セット番号が未設定の場合はエラーになることを確認(DB制約。Serviceの事前条件チェックが一次防衛)
     def test_permission_set_id_required_when_not_admin(self):
         department = _create_department('開発部')
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(IntegrityError):
             ManagementGroup.objects.create(name='不正なグループ', department=department)
 
-    # is_admin=Trueなのに権限セット番号が設定されている場合はエラーになることを確認
+    # is_admin=Trueなのに権限セット番号が設定されている場合はエラーになることを確認(DB制約。Serviceの事前条件チェックが一次防衛)
     def test_permission_set_id_forbidden_when_admin(self):
-        with pytest.raises(ValidationError):
+        with pytest.raises(IntegrityError):
             ManagementGroup.objects.create(name='不正なグループ', is_admin=True, permission_set_id=1)
-
-    # REGISTRYに存在しない権限セット番号を指定した場合はエラーになることを確認
-    def test_unknown_permission_set_id_is_rejected(self):
-        department = _create_department('開発部')
-
-        with pytest.raises(ValidationError):
-            ManagementGroup.objects.create(name='不正なグループ', department=department, permission_set_id=999)
 
     # REGISTRYに存在する権限セット番号を指定した場合は作成できることを確認
     def test_valid_permission_set_id_is_accepted(self):
@@ -64,11 +57,11 @@ class TestManagementGroupModel:
 
         assert group.permission_set_id == 1
 
-    # 名前が重複する場合はエラーになることを確認
+    # 名前が重複する場合はエラーになることを確認(DB制約。Serviceの事前条件チェックが一次防衛)
     def test_name_must_be_unique(self):
         ManagementGroup.objects.create(name='開発チーム', is_admin=True)
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(IntegrityError):
             ManagementGroup.objects.create(name='開発チーム', is_admin=True)
 
     # メンバーを複数のユーザーで構成できることを確認

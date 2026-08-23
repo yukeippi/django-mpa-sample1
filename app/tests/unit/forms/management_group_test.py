@@ -34,26 +34,8 @@ class TestManagementGroupForm:
         })
         assert form.is_valid()
 
-    # 全社管理者でないのに部門が未指定の場合、フォームが無効と判定されることを確認
-    def test_department_required_when_not_admin(self):
-        form = ManagementGroupForm(data={
-            'name': '開発チーム',
-            'members': [],
-            'is_admin': False,
-        })
-        assert not form.is_valid()
-
-    # 全社管理者でないのに権限セット番号が未指定の場合、フォームが無効と判定されることを確認
-    def test_permission_set_id_required_when_not_admin(self, sample_department):
-        form = ManagementGroupForm(data={
-            'name': '開発チーム',
-            'members': [],
-            'is_admin': False,
-            'department': sample_department.id,
-        })
-        assert not form.is_valid()
-
     # 全社管理者でなく、部門・権限セット番号を指定していれば妥当と判定されることを確認
+    # (is_adminと部門・権限セットの整合性そのものはService事前条件チェックの担当。Validation Rules参照)
     def test_valid_non_admin_data_is_valid(self, sample_department):
         form = ManagementGroupForm(data={
             'name': '開発チーム',
@@ -63,19 +45,6 @@ class TestManagementGroupForm:
             'permission_set_id': 1,
         })
         assert form.is_valid()
-
-    # saveすると指定したメンバーが設定されることを確認
-    def test_save_sets_members(self, sample_user, other_user):
-        form = ManagementGroupForm(data={
-            'name': '開発チーム',
-            'members': [sample_user.id, other_user.id],
-            'is_admin': True,
-        })
-        assert form.is_valid()
-
-        group = form.save()
-
-        assert group.members.count() == 2
 
 
 @pytest.fixture

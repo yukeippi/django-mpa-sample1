@@ -3,8 +3,9 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, redirect, render
-from app import services
+from django.shortcuts import redirect, render
+from app import selectors, services
+from app.errors.base import DomainError
 from app.forms import CompanyForm
 from app.models import Company
 from app.permissions.access import can_create, can_delete, can_display_create_form, can_edit, can_view
@@ -17,7 +18,8 @@ MODEL_NAME = 'Company'
 # メリット(DBへのLIMIT/OFFSET)が失われるため、その場合はDB側で絞り込む方式への変更を検討する
 @login_required
 def index(request: HttpRequest) -> HttpResponse:
-    companies = [company for company in Company.objects.all() if can_view(request.user, MODEL_NAME, company)]
+    companies_qs = selectors.company.list_companies()
+    companies = [company for company in companies_qs if can_view(request.user, MODEL_NAME, company)]
     paginator = Paginator(companies, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'app/company/index.html', {
@@ -29,7 +31,7 @@ def index(request: HttpRequest) -> HttpResponse:
 # 会社詳細
 @login_required
 def show(request: HttpRequest, pk: int) -> HttpResponse:
-    company = get_object_or_404(Company, pk=pk)
+    company = selectors.company.get_company(pk=pk)
     if not can_view(request.user, MODEL_NAME, company):
         raise PermissionDenied
     return render(request, 'app/company/show.html', {'company': company})
@@ -48,7 +50,7 @@ def new(request: HttpRequest) -> HttpResponse:
 # 会社編集
 @login_required
 def edit(request: HttpRequest, pk: int) -> HttpResponse:
-    company = get_object_or_404(Company, pk=pk)
+    company = selectors.company.get_company(pk=pk)
     if not can_edit(request.user, MODEL_NAME, company):
         raise PermissionDenied
     if request.method == 'POST':
@@ -59,7 +61,7 @@ def edit(request: HttpRequest, pk: int) -> HttpResponse:
 # 会社削除
 @login_required
 def delete(request: HttpRequest, pk: int) -> HttpResponse:
-    company = get_object_or_404(Company, pk=pk)
+    company = selectors.company.get_company(pk=pk)
     if not can_delete(request.user, MODEL_NAME, company):
         raise PermissionDenied
     if request.method == 'POST':
@@ -88,7 +90,11 @@ def _create_company(request):
     candidate = Company(**form.cleaned_data)
     if not can_create(request.user, MODEL_NAME, candidate):
         raise PermissionDenied
-    company = services.company.create(form=form)
+    try:
+        company = services.company.create(form=form)
+    except DomainError as error:
+        form.add_error(None, error.message)
+        return _render_new_form(request, form)
     messages.success(request, '会社を作成しました。')
     return redirect('app:company_show', pk=company.pk)
 
@@ -100,16 +106,25 @@ def _render_new_form(request, form):
 
 # 編集フォームを表示する
 def _display_edit_form(request, company):
-    form = CompanyForm(instance=company)
+    form = CompanyForm(initial=_company_initial(company))
     return _render_edit_form(request, company, form)
+
+
+# instanceの現在値からFormの初期値を組み立てる(ModelFormを使わないため明示的に行う)
+def _company_initial(company):
+    return {'name': company.name}
 
 
 # 会社の更新処理を行う
 def _update_company(request, company):
-    form = CompanyForm(request.POST, instance=company)
+    form = CompanyForm(request.POST)
     if not form.is_valid():
         return _render_edit_form(request, company, form)
-    services.company.update(form=form)
+    try:
+        services.company.update(company=company, form=form)
+    except DomainError as error:
+        form.add_error(None, error.message)
+        return _render_edit_form(request, company, form)
     messages.success(request, '会社情報を更新しました。')
     return redirect('app:company_show', pk=company.pk)
 

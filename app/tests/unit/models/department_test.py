@@ -1,5 +1,5 @@
 import pytest
-from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from app.models import Company, Department
 
 
@@ -16,12 +16,12 @@ class TestDepartmentModel:
         assert department.company == company
         assert department.name == '開発部'
 
-    # 同じ会社内で部門名が重複する場合はエラーになることを確認(アプリ側のバリデーション)
+    # 同じ会社内で部門名が重複する場合はエラーになることを確認(DB制約。Serviceの事前条件チェックが一次防衛)
     def test_name_must_be_unique_within_company(self):
         company = Company.objects.create(name='サンプル株式会社')
         Department.objects.create(company=company, name='開発部')
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(IntegrityError):
             Department.objects.create(company=company, name='開発部')
 
     # 別の会社であれば同じ部門名を使えることを確認
@@ -63,3 +63,21 @@ class TestDepartmentQuerySet:
         with django_assert_num_queries(1):
             department = Department.objects.with_company().first()
             str(department.company)
+
+    # duplicate_of()が同じ会社・同じ名前の部門(自分自身を除く)を返すことを確認
+    def test_duplicate_of_returns_matching_departments_excluding_self(self):
+        company = Company.objects.create(name='サンプル株式会社')
+        department = Department.objects.create(company=company, name='開発部')
+
+        result = Department.objects.duplicate_of(company=company, name='開発部', exclude_pk=department.pk)
+
+        assert list(result) == []
+
+    # duplicate_of()がexclude_pk無しでは自分自身も含めて返すことを確認
+    def test_duplicate_of_without_exclude_pk_includes_self(self):
+        company = Company.objects.create(name='サンプル株式会社')
+        department = Department.objects.create(company=company, name='開発部')
+
+        result = Department.objects.duplicate_of(company=company, name='開発部')
+
+        assert list(result) == [department]

@@ -3,8 +3,9 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, redirect, render
-from app import services
+from django.shortcuts import redirect, render
+from app import selectors, services
+from app.errors.base import DomainError
 from app.forms import EmployeeForm
 from app.models import Employee
 from app.permissions.access import can_create, can_delete, can_display_create_form, can_edit, can_view
@@ -17,7 +18,7 @@ MODEL_NAME = 'Employee'
 # メリット(DBへのLIMIT/OFFSET)が失われるため、その場合はDB側で絞り込む方式への変更を検討する
 @login_required
 def index(request: HttpRequest) -> HttpResponse:
-    employees_qs = Employee.objects.with_user()
+    employees_qs = selectors.employee.list_employees()
     employees = [employee for employee in employees_qs if can_view(request.user, MODEL_NAME, employee)]
     paginator = Paginator(employees, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -30,7 +31,7 @@ def index(request: HttpRequest) -> HttpResponse:
 # 社員詳細
 @login_required
 def show(request: HttpRequest, pk: int) -> HttpResponse:
-    employee = get_object_or_404(Employee, pk=pk)
+    employee = selectors.employee.get_employee(pk=pk)
     if not can_view(request.user, MODEL_NAME, employee):
         raise PermissionDenied
     return render(request, 'app/employee/show.html', {'employee': employee})
@@ -49,7 +50,7 @@ def new(request: HttpRequest) -> HttpResponse:
 # 社員編集
 @login_required
 def edit(request: HttpRequest, pk: int) -> HttpResponse:
-    employee = get_object_or_404(Employee, pk=pk)
+    employee = selectors.employee.get_employee(pk=pk)
     if not can_edit(request.user, MODEL_NAME, employee):
         raise PermissionDenied
     if request.method == 'POST':
@@ -60,7 +61,7 @@ def edit(request: HttpRequest, pk: int) -> HttpResponse:
 # 社員削除
 @login_required
 def delete(request: HttpRequest, pk: int) -> HttpResponse:
-    employee = get_object_or_404(Employee, pk=pk)
+    employee = selectors.employee.get_employee(pk=pk)
     if not can_delete(request.user, MODEL_NAME, employee):
         raise PermissionDenied
     if request.method == 'POST':
@@ -77,19 +78,23 @@ def delete(request: HttpRequest, pk: int) -> HttpResponse:
 
 # 新規作成フォームを表示する
 def _display_new_form(request):
-    form = EmployeeForm()
+    form = EmployeeForm(is_new=True)
     return _render_new_form(request, form)
 
 
 # 社員の新規作成処理を行う(UserとEmployeeを同時作成)
 def _create_employee(request):
-    form = EmployeeForm(request.POST)
+    form = EmployeeForm(request.POST, is_new=True)
     if not form.is_valid():
         return _render_new_form(request, form)
     candidate = Employee(employee_number=form.cleaned_data['employee_number'])
     if not can_create(request.user, MODEL_NAME, candidate):
         raise PermissionDenied
-    employee = services.employee.create(form=form)
+    try:
+        employee = services.employee.create(form=form)
+    except DomainError as error:
+        form.add_error(None, error.message)
+        return _render_new_form(request, form)
     messages.success(request, '社員を登録しました。')
     return redirect('app:employee_show', pk=employee.pk)
 
@@ -101,16 +106,29 @@ def _render_new_form(request, form):
 
 # 編集フォームを表示する
 def _display_edit_form(request, employee):
-    form = EmployeeForm(instance=employee)
+    form = EmployeeForm(initial=_employee_initial(employee))
     return _render_edit_form(request, employee, form)
+
+
+# instanceの現在値からFormの初期値を組み立てる(ModelFormを使わないため明示的に行う)
+def _employee_initial(employee):
+    return {
+        'employee_number': employee.employee_number,
+        'last_name': employee.user.last_name,
+        'first_name': employee.user.first_name,
+    }
 
 
 # 社員の更新処理を行う
 def _update_employee(request, employee):
-    form = EmployeeForm(request.POST, instance=employee)
+    form = EmployeeForm(request.POST)
     if not form.is_valid():
         return _render_edit_form(request, employee, form)
-    services.employee.update(employee=employee, form=form)
+    try:
+        services.employee.update(employee=employee, form=form)
+    except DomainError as error:
+        form.add_error(None, error.message)
+        return _render_edit_form(request, employee, form)
     messages.success(request, '社員情報を更新しました。')
     return redirect('app:employee_show', pk=employee.pk)
 

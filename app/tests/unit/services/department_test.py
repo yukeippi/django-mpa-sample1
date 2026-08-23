@@ -1,4 +1,5 @@
 import pytest
+from app.errors.department import DuplicateDepartmentNameError
 from app.forms.department import DepartmentForm
 from app.models import Company, Department
 from app.services import department as department_service
@@ -18,6 +19,16 @@ class TestCreate:
         assert department.id is not None
         assert department.name == '開発部'
 
+    # 同じ会社内で部門名が重複する場合はDuplicateDepartmentNameErrorが送出されることを確認
+    def test_duplicate_name_raises_error(self):
+        company = Company.objects.create(name='サンプル株式会社')
+        Department.objects.create(company=company, name='開発部')
+        form = DepartmentForm(data={'company': company.id, 'name': '開発部'})
+        assert form.is_valid()
+
+        with pytest.raises(DuplicateDepartmentNameError):
+            department_service.create(form=form)
+
 
 @pytest.mark.django_db
 class TestUpdate:
@@ -26,12 +37,23 @@ class TestUpdate:
     def test_updates_department(self):
         company = Company.objects.create(name='サンプル株式会社')
         department = Department.objects.create(company=company, name='元の部門')
-        form = DepartmentForm(data={'company': company.id, 'name': '更新後の部門'}, instance=department)
+        form = DepartmentForm(data={'company': company.id, 'name': '更新後の部門'})
         assert form.is_valid()
 
-        updated_department = department_service.update(form=form)
+        updated_department = department_service.update(department=department, form=form)
 
         assert updated_department.name == '更新後の部門'
+
+    # 他部門と名前が重複する場合はDuplicateDepartmentNameErrorが送出されることを確認
+    def test_duplicate_name_raises_error(self):
+        company = Company.objects.create(name='サンプル株式会社')
+        Department.objects.create(company=company, name='既存の部門')
+        department = Department.objects.create(company=company, name='元の部門')
+        form = DepartmentForm(data={'company': company.id, 'name': '既存の部門'})
+        assert form.is_valid()
+
+        with pytest.raises(DuplicateDepartmentNameError):
+            department_service.update(department=department, form=form)
 
 
 @pytest.mark.django_db

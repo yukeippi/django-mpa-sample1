@@ -1,6 +1,6 @@
 import pytest
 from django.contrib.auth.models import User
-from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from app.models import Company, Department, Employee, EmployeeDepartment
 
 
@@ -18,13 +18,13 @@ class TestEmployeeDepartmentModel:
         assert relation.id is not None
         assert relation.is_primary is True
 
-    # 同じ社員・部門の組み合わせが重複する場合はエラーになることを確認(アプリ側のバリデーション)
+    # 同じ社員・部門の組み合わせが重複する場合はエラーになることを確認(DB制約。Serviceの事前条件チェックが一次防衛)
     def test_same_employee_department_pair_must_be_unique(self):
         employee = _create_employee('E7002')
         department = _create_department('開発部')
         EmployeeDepartment.objects.create(employee=employee, department=department)
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(IntegrityError):
             EmployeeDepartment.objects.create(employee=employee, department=department)
 
     # __str__が「社員 - 部門」を返すことを確認

@@ -1,7 +1,5 @@
 from django.db import models
 from django.contrib.auth.models import User
-from django.core.validators import MinValueValidator, MaxValueValidator
-from app.lib.validators import ContainsCharacterValidator
 
 
 # タスク管理のためのサンプルモデル
@@ -13,24 +11,16 @@ class Task(models.Model):
     ]
 
     title = models.CharField(max_length=200, verbose_name='タイトル')
-    # サンプル: 自作の(__call__を実装した)カスタムバリデータクラスを使う例。
-    # 説明を入力する場合は、関連するIssue番号(#123のような形式)を含めることを求める。
-    description = models.TextField(
-        blank=True,
-        verbose_name='説明',
-        validators=[ContainsCharacterValidator('#', message='説明には関連するIssue番号(例: #123)を含めてください。')],
-    )
+    # 説明に関連するIssue番号(#123のような形式)を含めることを求める形式チェックは
+    # app/validators/task.pyのPure Function(Form経由)で行う(Validator Rules参照)
+    description = models.TextField(blank=True, verbose_name='説明')
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
         default='todo',
         verbose_name='ステータス'
     )
-    priority = models.IntegerField(
-        default=3,
-        validators=[MinValueValidator(1), MaxValueValidator(5)],
-        verbose_name='優先度'
-    )
+    priority = models.IntegerField(default=3, verbose_name='優先度')
     assigned_to = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -56,14 +46,15 @@ class Task(models.Model):
         ordering = ['-created_at']
         verbose_name = 'タスク'
         verbose_name_plural = 'タスク'
+        constraints = [
+            # 優先度は1〜5の範囲(DB自身が保証できる制約。Formのmin_value/max_valueが一次防衛)
+            models.CheckConstraint(
+                condition=models.Q(priority__gte=1) & models.Q(priority__lte=5), name='task_priority_range',
+            ),
+        ]
 
     def __str__(self):
         return self.title
-
-    # save()のたびに必ずバリデーション(フィールドのvalidators等)が走るようにする
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
 
     # 期限を過ぎているかチェック
     def is_overdue(self) -> bool:

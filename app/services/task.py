@@ -5,15 +5,15 @@ from app.models import Task
 
 # タスクを作成する
 def create(*, form: TaskForm, created_by: User) -> Task:
-    task = form.save(commit=False)
-    task.created_by = created_by
-    task.save()
-    return task
+    return Task.objects.create(created_by=created_by, **form.cleaned_data)
 
 
 # タスクを更新する
-def update(*, form: TaskForm) -> Task:
-    return form.save()
+def update(*, task: Task, form: TaskForm) -> Task:
+    for field, value in form.cleaned_data.items():
+        setattr(task, field, value)
+    task.save(update_fields=[*form.cleaned_data.keys()])
+    return task
 
 
 # タスクを削除する

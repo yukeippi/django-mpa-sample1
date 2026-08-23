@@ -3,8 +3,9 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, redirect, render
-from app import services
+from django.shortcuts import redirect, render
+from app import selectors, services
+from app.errors.base import DomainError
 from app.forms import DepartmentForm
 from app.models import Department
 from app.permissions.access import can_create, can_delete, can_display_create_form, can_edit, can_view
@@ -17,7 +18,7 @@ MODEL_NAME = 'Department'
 # メリット(DBへのLIMIT/OFFSET)が失われるため、その場合はDB側で絞り込む方式への変更を検討する
 @login_required
 def index(request: HttpRequest) -> HttpResponse:
-    departments_qs = Department.objects.with_company()
+    departments_qs = selectors.department.list_departments()
     departments = [department for department in departments_qs if can_view(request.user, MODEL_NAME, department)]
     paginator = Paginator(departments, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -30,7 +31,7 @@ def index(request: HttpRequest) -> HttpResponse:
 # 部門詳細
 @login_required
 def show(request: HttpRequest, pk: int) -> HttpResponse:
-    department = get_object_or_404(Department, pk=pk)
+    department = selectors.department.get_department(pk=pk)
     if not can_view(request.user, MODEL_NAME, department):
         raise PermissionDenied
     return render(request, 'app/department/show.html', {'department': department})
@@ -49,7 +50,7 @@ def new(request: HttpRequest) -> HttpResponse:
 # 部門編集
 @login_required
 def edit(request: HttpRequest, pk: int) -> HttpResponse:
-    department = get_object_or_404(Department, pk=pk)
+    department = selectors.department.get_department(pk=pk)
     if not can_edit(request.user, MODEL_NAME, department):
         raise PermissionDenied
     if request.method == 'POST':
@@ -60,7 +61,7 @@ def edit(request: HttpRequest, pk: int) -> HttpResponse:
 # 部門削除
 @login_required
 def delete(request: HttpRequest, pk: int) -> HttpResponse:
-    department = get_object_or_404(Department, pk=pk)
+    department = selectors.department.get_department(pk=pk)
     if not can_delete(request.user, MODEL_NAME, department):
         raise PermissionDenied
     if request.method == 'POST':
@@ -89,7 +90,11 @@ def _create_department(request):
     candidate = Department(**form.cleaned_data)
     if not can_create(request.user, MODEL_NAME, candidate):
         raise PermissionDenied
-    department = services.department.create(form=form)
+    try:
+        department = services.department.create(form=form)
+    except DomainError as error:
+        form.add_error(None, error.message)
+        return _render_new_form(request, form)
     messages.success(request, '部門を作成しました。')
     return redirect('app:department_show', pk=department.pk)
 
@@ -101,16 +106,25 @@ def _render_new_form(request, form):
 
 # 編集フォームを表示する
 def _display_edit_form(request, department):
-    form = DepartmentForm(instance=department)
+    form = DepartmentForm(initial=_department_initial(department))
     return _render_edit_form(request, department, form)
+
+
+# instanceの現在値からFormの初期値を組み立てる(ModelFormを使わないため明示的に行う)
+def _department_initial(department):
+    return {'company': department.company, 'name': department.name}
 
 
 # 部門の更新処理を行う
 def _update_department(request, department):
-    form = DepartmentForm(request.POST, instance=department)
+    form = DepartmentForm(request.POST)
     if not form.is_valid():
         return _render_edit_form(request, department, form)
-    services.department.update(form=form)
+    try:
+        services.department.update(department=department, form=form)
+    except DomainError as error:
+        form.add_error(None, error.message)
+        return _render_edit_form(request, department, form)
     messages.success(request, '部門情報を更新しました。')
     return redirect('app:department_show', pk=department.pk)
 

@@ -1,5 +1,5 @@
 import pytest
-from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from app.models import Company, Department, DepartmentHierarchy
 
 
@@ -29,31 +29,21 @@ class TestDepartmentHierarchyModel:
         assert hierarchy.id is not None
         assert hierarchy.parent_department is None
 
-    # 親部門が別の会社に属している場合はエラーになることを確認
-    def test_parent_must_be_same_company(self):
-        company_a = Company.objects.create(name='A株式会社')
-        company_b = Company.objects.create(name='B株式会社')
-        department = Department.objects.create(company=company_a, name='営業部')
-        other_company_department = Department.objects.create(company=company_b, name='本社')
-
-        with pytest.raises(ValidationError):
-            DepartmentHierarchy.objects.create(department=department, parent_department=other_company_department)
-
-    # 同じ部門で2件目のレコードを作成しようとするとエラーになることを確認(1部門につき1レコード)
+    # 同じ部門で2件目のレコードを作成しようとするとエラーになることを確認(1部門につき1レコード。OneToOneField由来のDB制約)
     def test_department_must_be_unique(self):
         company = Company.objects.create(name='サンプル株式会社')
         department = Department.objects.create(company=company, name='営業部')
         DepartmentHierarchy.objects.create(department=department)
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(IntegrityError):
             DepartmentHierarchy.objects.create(department=department)
 
-    # 親部門に自分自身を指定した場合はエラーになることを確認
+    # 親部門に自分自身を指定した場合はエラーになることを確認(DB制約。Serviceの事前条件チェックが一次防衛)
     def test_parent_cannot_be_self(self):
         company = Company.objects.create(name='サンプル株式会社')
         department = Department.objects.create(company=company, name='営業部')
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(IntegrityError):
             DepartmentHierarchy.objects.create(department=department, parent_department=department)
 
     # __str__が「部門 (親: 親部門)」の形式を返すことを確認
