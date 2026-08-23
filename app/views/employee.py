@@ -4,7 +4,6 @@ from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
-from app import messages as app_messages
 from app import selectors, services
 from app.errors.base import DomainError
 from app.forms import EmployeeForm
@@ -94,7 +93,7 @@ def _create_employee(request):
     try:
         employee = services.employee.create(form=form)
     except DomainError as error:
-        form.add_error(None, app_messages.employee.message_for_error(error))
+        form.add_error(None, error.message)
         return _render_new_form(request, form)
     messages.success(request, '社員を登録しました。')
     return redirect('app:employee_show', pk=employee.pk)
@@ -128,7 +127,7 @@ def _update_employee(request, employee):
     try:
         services.employee.update(employee=employee, form=form)
     except DomainError as error:
-        form.add_error(None, app_messages.employee.message_for_error(error))
+        form.add_error(None, error.message)
         return _render_edit_form(request, employee, form)
     messages.success(request, '社員情報を更新しました。')
     return redirect('app:employee_show', pk=employee.pk)

@@ -4,7 +4,6 @@ from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
-from app import messages as app_messages
 from app import selectors, services
 from app.errors.base import DomainError
 from app.forms import ManagementGroupForm
@@ -88,7 +87,7 @@ def _create_management_group(request):
     try:
         management_group = services.management_group.create(form=form)
     except DomainError as error:
-        form.add_error(None, app_messages.management_group.message_for_error(error))
+        form.add_error(None, error.message)
         return _render_new_form(request, form)
     messages.success(request, '管理グループを作成しました。')
     return redirect('app:management_group_show', pk=management_group.pk)
@@ -124,7 +123,7 @@ def _update_management_group(request, management_group):
     try:
         services.management_group.update(management_group=management_group, form=form)
     except DomainError as error:
-        form.add_error(None, app_messages.management_group.message_for_error(error))
+        form.add_error(None, error.message)
         return _render_edit_form(request, management_group, form)
     messages.success(request, '管理グループを更新しました。')
     return redirect('app:management_group_show', pk=management_group.pk)

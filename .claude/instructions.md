@@ -16,7 +16,6 @@ models、forms、views、services、selectors、validators、tests、templates�
 - selectors/todo.py
 - validators/todo.py
 - errors/todo.py
-- messages/todo.py
 - tests/unit/models/todo_test.py
 - tests/unit/forms/todo_test.py
 - tests/unit/views/todo_test.py
@@ -27,7 +26,7 @@ models、forms、views、services、selectors、validators、tests、templates�
 
 各ディレクトリに__init__.pyを配置すること。
 
-`tests/unit/`配下は、ソース側の`models/`, `forms/`, `views/`, `services/`, `selectors/`, `validators/`, `lib/`と対応するレイヤーごとのディレクトリにさらに分割する(Railsの`test/models/`, `test/controllers/`に相当)。`app/lib/`(`auth.py`/`permissions.py`等、app内で共有するロジック。詳細はCommon Module Rulesを参照)のテストも同様に`tests/unit/lib/`に置く(例: `tests/unit/lib/auth_test.py`)。`app/errors/`・`app/messages/`・`app/rules/`(役割はError Rules/Message Rules/Rules Directory Rulesを参照)は単純な対応表であることが多く、分岐ロジックが生じた場合のみ`tests/unit/errors/`・`tests/unit/messages/`を追加する。`tests/e2e/`はページ単位のテストのため、このレイヤー分割は行わない。
+`tests/unit/`配下は、ソース側の`models/`, `forms/`, `views/`, `services/`, `selectors/`, `validators/`, `lib/`と対応するレイヤーごとのディレクトリにさらに分割する(Railsの`test/models/`, `test/controllers/`に相当)。`app/lib/`(`auth.py`/`permissions.py`等、app内で共有するロジック。詳細はCommon Module Rulesを参照)のテストも同様に`tests/unit/lib/`に置く(例: `tests/unit/lib/auth_test.py`)。`app/errors/`・`app/rules/`(役割はError Rules/Rules Directory Rulesを参照)は単純な定義の並びであることが多く、分岐ロジックが生じた場合のみ`tests/unit/errors/`を追加する。`tests/e2e/`はページ単位のテストのため、このレイヤー分割は行わない。
 
 ## Layout Rules
 
@@ -371,8 +370,7 @@ app/
 ├── services/                # 業務ロジック・トランザクション境界
 ├── selectors/               # Viewの読み取り窓口(Selector Rules参照)
 ├── validators/              # Pure Functionの検証ロジック(Validator Rules参照)
-├── errors/                  # DomainError(言語非依存。Error Rules参照)
-├── messages/                # DomainErrorの日本語文言(Message Rules参照)
+├── errors/                  # DomainError(code+message。Error Rules参照)
 ├── rules/                   # Form/Validator/Serviceが共有する形式的制約(Rules Directory Rules参照)
 ├── lib/                     # 上記のどれにも属さない、app内で共有するコード
 │   ├── __init__.py
@@ -418,7 +416,7 @@ class TaskForm(forms.Form):
 - **Pure Functionの契約**: ORM/DBを呼ばない。Service/Selectorを呼ばない。`request`/`Form`インスタンスに依存しない。値を1つ受け取り、成功時はその値をそのまま返し、失敗時は`app/errors/`の`DomainError`(typed exception)を送出する
 - **Djangoの`ValidationError`を使わない**: 失敗時に送出するのはDjangoの`ValidationError`ではなく`DomainError`(Error Rules参照)。Validatorが例外を発生させた時点でエラーの種類(code)が確定している
 - **DB状態が必要な検証は対象外**: 重複チェックのようにDBを読む必要がある検証はPure Validatorではない。Formの画面内では完結できないため、Validation Rulesの第2段階(Service)の事前条件チェックとして書く(Validation Rules参照)
-- **呼び出し元**: Formの`clean_<field>()`(`DomainError`を`forms.ValidationError`に変換して画面表示する。Message Rules参照)と、Serviceの事前条件チェックの両方から同じ関数を呼べる。呼び出し元ごとにロジックを重複させないための共有点がこのレイヤー
+- **呼び出し元**: Formの`clean_<field>()`(`DomainError.message`を`forms.ValidationError`にそのまま渡して画面表示する。Error Rules参照)と、Serviceの事前条件チェックの両方から同じ関数を呼べる。呼び出し元ごとにロジックを重複させないための共有点がこのレイヤー
 
 ### Example
 
@@ -463,7 +461,7 @@ EMPLOYEE_NUMBER_REGEX = r'^E\d{4}$'
 ```python
 # app/forms/employee.py
 from django import forms
-from app import errors, messages as app_messages
+from app.errors.base import DomainError
 from app.validators.employee import validate_employee_number_format
 
 
@@ -476,8 +474,8 @@ class EmployeeForm(forms.Form):
         value = self.cleaned_data['employee_number']
         try:
             return validate_employee_number_format(value)
-        except errors.base.DomainError as error:
-            raise forms.ValidationError(app_messages.employee.message_for_error(error)) from error
+        except DomainError as error:
+            raise forms.ValidationError(error.message) from error
 ```
 
 ## Mixin/Base Naming Rules
@@ -673,17 +671,52 @@ def set_parent_department(*, hierarchy: DepartmentHierarchy, parent_department: 
 
 ## Error Rules
 
-予測可能な業務失敗(利用者が普通に発生させ得るもの)は、Djangoの`ValidationError`を経由させず、`app/errors/`に定義する言語非依存の`DomainError`(typed exception)として最初から直接送出する。エラーの発生条件(コード)と表示文言(日本語)を分離し、文言変更・多言語化のためにドメイン層を触らずに済むようにする。
+予測可能な業務失敗(利用者が普通に発生させ得るもの)は、Djangoの`ValidationError`を経由させず、`app/errors/`に定義する`DomainError`(typed exception)として最初から直接送出する。`message`(利用者向けの日本語文言)を1つの例外クラスに持たせる。
 
 - **配置**: 基底クラスを`app/errors/base.py`に置き、モデル・業務領域ごとに`app/errors/<model>.py`へ具体的なエラーを定義する。`__init__.py`はView/Serviceと同様にモジュール単位でインポートする
-- **形**: `code`(文字列)と`params`(dict)を持つdataclassベースの例外にする。メッセージ文字列は持たない
+- **形**: `message`(文字列)を持つdataclassベースの例外にする。サブクラスの`__init__`で`message`をその場で確定させる(下記Example参照)。`code`と`message`を別ファイル・別レイヤーに分けない。エラーの発生条件と表示文言は1対1で決まることがほとんどで、ファイルを分けても呼び出し側は毎回両方を追加することになり、分離の恩恵(文言変更でドメイン層を触らずに済む等)より二重管理のコストの方が大きいため
+- **`code`/`params`は使う予定が具体化してから追加する**: 将来Datadog等へ構造化ログを送る計画がある場合に限り、`code`(ログメッセージに使う英語の識別子)と`params`(検索・集計可能なフィールド)を`DomainError`に追加してよい。追加する場合は、なぜ`message`だけでは足りないのかを`DomainError`の定義にコメントで残す(下記Example参照)。使う予定のない属性を「いつか使うかもしれない」で先回りして持たせない
 - **業務エラーにDjangoの`ValidationError`を使わない**: `DomainError`はDjangoの`ValidationError`を継承・変換せず、独立した例外として定義する。ModelもValidatorも`clean()`/`full_clean()`を使わないため(Validation Rules/Validator Rules参照)、業務エラーの経路にDjangoの`ValidationError`は登場しない。Formの`clean_<field>()`が画面表示のために送出する`forms.ValidationError`は、あくまで画面(Django Form)自身の仕組みであり、`DomainError`とは別物として扱う
 - **`app/models/`との関係**: 状態判定(`can_complete()`等)はこれまで通りModelが真偽値メソッドとして持ち、`DomainError`の送出はService側が担う(Service Rulesの「modelとの役割分担」参照)。Model自身は`app/errors/`をimportせず、`DomainError`を送出しない
 - **programmer errorを握り潰さない**: DB制約違反(`IntegrityError`)など、Serviceの事前条件チェックをすり抜けて発生した想定外のエラーを`DomainError`に変換して隠さない。バグまたは競合として通常の例外のまま伝播させる
-- `app/errors/`は他のどの層(`views/`, `messages/`等)にも依存しない
+- `app/errors/`は他のどの層(`views/`等)にも依存しない
 - **importの書き方**: 共通基底クラスの`DomainError`は名前衝突の心配がないため`from app.errors.base import DomainError`のように直接importしてよい。モデル固有のエラークラス(`TaskNotCompletableError`等)は他層と同様に`from app import errors`のうえで`errors.<model>.XxxError`とモジュール修飾して参照する(View/Service/Selectorと同じ規約)
+- **Viewでの使い方**: Serviceが送出した`DomainError`をViewの`try/except`で受け、`error.message`をそのまま`django.contrib.messages.error()`や`form.add_error(None, ...)`に渡す。文言変換の中間関数は不要
+- **Formでの使い方**: `app/validators/`のPure Functionが送出した`DomainError`をFormの`clean_<field>()`が受け、`error.message`を`forms.ValidationError(...)`にそのまま渡して画面表示する(Form Rules/Validator Rules参照)
+- **成功時の文言**: 成功メッセージ(`messages.success()`)は業務エラーではないため`DomainError`を経由しない。従来通りView側にそのまま日本語文字列で書いてよい
 
 ### Example
+
+```python
+# app/errors/base.py
+from dataclasses import dataclass
+
+
+@dataclass(eq=False)
+class DomainError(Exception):
+    message: str
+```
+
+```python
+# app/errors/department.py
+from app.errors.base import DomainError
+
+
+# 同じ会社内に同名の部門が既に存在する(Service側の事前条件チェックで送出)
+class DuplicateDepartmentNameError(DomainError):
+    def __init__(self) -> None:
+        super().__init__(message='この会社には同じ名前の部門が既に存在します。')
+
+
+# 親部門が同じ会社に属していない(Service側の事前条件チェックで送出)
+class ParentDepartmentCompanyMismatchError(DomainError):
+    def __init__(self) -> None:
+        super().__init__(message='親部門は同じ会社に属している必要があります。')
+```
+
+#### `code`/`params`を追加する場合の例
+
+構造化ログ基盤(Datadog等)へ送る計画が具体化した場合は、`DomainError`に`code`(ログメッセージに使う英語の識別子)と`params`(検索・集計可能なフィールド)を追加してよい。なぜその属性を持たせているかを、使う場所がまだなくてもコメントで残す。
 
 ```python
 # app/errors/base.py
@@ -691,9 +724,13 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
+# messageは画面表示用の日本語文言。codeとparamsはアプリ内では未使用だが、
+# 将来Datadog等へ構造化ログとして送る際に、code(英語の識別子)をログメッセージ、
+# paramsを検索・集計可能なフィールドとして使う想定であえて残している
 @dataclass(eq=False)
 class DomainError(Exception):
     code: str
+    message: str
     params: dict[str, Any] = field(default_factory=dict)
 ```
 
@@ -705,25 +742,14 @@ from app.errors.base import DomainError
 # 未完了の子タスクが残っているため完了できない
 class TaskNotCompletableError(DomainError):
     def __init__(self, *, task_id: int) -> None:
-        super().__init__(code='task_not_completable', params={'task_id': task_id})
+        super().__init__(
+            code='task_not_completable',
+            message='未完了の子タスクが残っているため、このタスクは完了できません。',
+            params={'task_id': task_id},
+        )
 ```
 
-```python
-# app/errors/department.py
-from app.errors.base import DomainError
-
-
-# 同じ会社内に同名の部門が既に存在する(Service側の事前条件チェックで送出)
-class DuplicateDepartmentNameError(DomainError):
-    def __init__(self) -> None:
-        super().__init__(code='duplicate_department_name')
-
-
-# 親部門が同じ会社に属していない(Service側の事前条件チェックで送出)
-class ParentDepartmentCompanyMismatchError(DomainError):
-    def __init__(self) -> None:
-        super().__init__(code='parent_department_company_mismatch')
-```
+`code`/`params`を追加しない場合(デフォルト)は、上記department.pyの例のように`message`だけを渡す。
 
 ```python
 # app/errors/employee.py
@@ -733,7 +759,7 @@ from app.errors.base import DomainError
 # 社員番号の形式が不正(Validatorから送出)
 class InvalidEmployeeNumberFormatError(DomainError):
     def __init__(self) -> None:
-        super().__init__(code='invalid_employee_number_format')
+        super().__init__(message='社員番号は E0001 のような形式で入力してください。')
 ```
 
 ```python
@@ -744,54 +770,6 @@ from . import employee
 from . import task
 
 __all__ = ['base', 'department', 'employee', 'task']
-```
-
-## Message Rules
-
-Error Rulesで定義した`DomainError`のコードを日本語文言に変換する処理は、モデル・業務領域ごとに`app/messages/<model>.py`にまとめる。ドメイン層(`models/`, `services/`, `errors/`)は日本語文言を一切持たない。
-
-- **配置**: `app/messages/<model>.py`に、そのモデルに関する`DomainError`のコード→文言の対応表(`ERROR_MESSAGES`)と、対応する`message_for_error()`関数を定義する
-- **Djangoの`django.contrib.messages`との名前衝突**: Viewでは`from django.contrib import messages`を使うため、`app/messages/`パッケージは`from app import messages as app_messages`のようにエイリアスしてimportし、どちらを指しているか一目で分かるようにする
-- **Viewでの使い方**: Serviceが送出した`DomainError`をViewの`try/except`で受け、`message_for_error()`で文言化してから`django.contrib.messages.error()`に渡す
-- **Formでの使い方**: `app/validators/`のPure Functionが送出した`DomainError`をFormの`clean_<field>()`が受け、`message_for_error()`で文言化してから`forms.ValidationError(text)`として画面表示する(Form Rules/Validator Rules参照)。ここでも文言のハードコードはしない
-- **成功時の文言**: 成功メッセージ(`messages.success()`)は業務エラーではないため`DomainError`を経由しない。従来通りView側にそのまま日本語文字列で書いてよい
-- **未知のコード**: 対応表にないコードのために、`message_for_error()`はデフォルトの汎用メッセージ(例:「処理を完了できませんでした。」)を返すようにする
-
-### Example
-
-```python
-# app/messages/task.py
-from app.errors.base import DomainError
-
-ERROR_MESSAGES = {
-    'task_not_completable': '未完了の子タスクが残っているため、このタスクは完了できません。',
-}
-
-
-# DomainErrorを日本語メッセージに変換する
-def message_for_error(error: DomainError) -> str:
-    return ERROR_MESSAGES.get(error.code, '処理を完了できませんでした。')
-```
-
-```python
-# app/messages/employee.py
-from app.errors.base import DomainError
-
-ERROR_MESSAGES = {
-    'invalid_employee_number_format': '社員番号は E0001 のような形式で入力してください。',
-}
-
-
-def message_for_error(error: DomainError) -> str:
-    return ERROR_MESSAGES.get(error.code, '入力内容を確認してください。')
-```
-
-```python
-# app/messages/__init__.py
-from . import employee
-from . import task
-
-__all__ = ['employee', 'task']
 ```
 
 ## Service Rules
@@ -833,12 +811,11 @@ __all__ = ['employee', 'task']
 ### serviceが持たないもの
 
 - `django.contrib.messages`の呼び出し
-- 日本語のエラー文言(`DomainError`のcodeのみ送出し、文言は`app/messages/`が担当。Message Rules参照)
 - `redirect`/HTTPステータス/テンプレート名
 - `get_object_or_404`(Selector Rules参照)
 - 画面遷移に関する判断
 
-業務条件を満たさない場合は、リダイレクトではなく`DomainError`を送出する(Error Rules参照)。viewが受け取って`app/messages/`で文言化し(Message Rules参照)、`messages`と画面遷移に変換する。
+業務条件を満たさない場合は、リダイレクトではなく`DomainError`を送出する(`code`と`message`を持つ。Error Rules参照)。viewが受け取って`error.message`を`messages`に渡し、画面遷移に変換する。
 
 ### modelとの役割分担
 
@@ -900,7 +877,6 @@ def complete(*, task: Task, operator: User) -> Task:
 
 ```python
 # app/views/task.py
-from app import messages as app_messages
 from app.errors.base import DomainError
 
 # タスク完了処理を行う
@@ -908,7 +884,7 @@ def _complete_task(request, task):
     try:
         services.task.complete(task=task, operator=request.user)
     except DomainError as error:
-        messages.error(request, app_messages.task.message_for_error(error))
+        messages.error(request, error.message)
         return redirect('app:task_show', pk=task.pk)
 
     messages.success(request, 'タスクを完了しました。')

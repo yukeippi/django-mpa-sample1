@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.models import User
-from app import errors, messages as app_messages
+from app.errors.base import DomainError
 from app.models import Task
 from app.validators.task import validate_description_contains_issue_reference
 
@@ -33,5 +33,5 @@ class TaskForm(forms.Form):
         value = self.cleaned_data['description']
         try:
             return validate_description_contains_issue_reference(value)
-        except errors.base.DomainError as error:
-            raise forms.ValidationError(app_messages.task.message_for_error(error)) from error
+        except DomainError as error:
+            raise forms.ValidationError(error.message) from error

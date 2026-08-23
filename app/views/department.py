@@ -4,7 +4,6 @@ from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
-from app import messages as app_messages
 from app import selectors, services
 from app.errors.base import DomainError
 from app.forms import DepartmentForm
@@ -94,7 +93,7 @@ def _create_department(request):
     try:
         department = services.department.create(form=form)
     except DomainError as error:
-        form.add_error(None, app_messages.department.message_for_error(error))
+        form.add_error(None, error.message)
         return _render_new_form(request, form)
     messages.success(request, '部門を作成しました。')
     return redirect('app:department_show', pk=department.pk)
@@ -124,7 +123,7 @@ def _update_department(request, department):
     try:
         services.department.update(department=department, form=form)
     except DomainError as error:
-        form.add_error(None, app_messages.department.message_for_error(error))
+        form.add_error(None, error.message)
         return _render_edit_form(request, department, form)
     messages.success(request, '部門情報を更新しました。')
     return redirect('app:department_show', pk=department.pk)
