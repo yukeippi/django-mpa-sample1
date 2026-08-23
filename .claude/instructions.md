@@ -7,21 +7,27 @@
 
 ## File Structure Rules
 
-models、forms、views、services、tests、templatesはディレクトリ化し、機能ごとにファイル分割してください。
+models、forms、views、services、selectors、validators、tests、templatesはディレクトリ化し、機能ごとにファイル分割してください。検証ロジックがForm/Validator/Service/DB制約のどこに属するかはValidation Rulesを参照。
 
 ### Examples
 - models/todo.py
 - views/todo.py
 - services/todo.py
+- selectors/todo.py
+- validators/todo.py
+- errors/todo.py
+- messages/todo.py
 - tests/unit/models/todo_test.py
 - tests/unit/forms/todo_test.py
 - tests/unit/views/todo_test.py
 - tests/unit/services/todo_test.py
+- tests/unit/selectors/todo_test.py
+- tests/unit/validators/todo_test.py
 - tests/e2e/todo_test.py
 
 各ディレクトリに__init__.pyを配置すること。
 
-`tests/unit/`配下は、ソース側の`models/`, `forms/`, `views/`, `services/`, `lib/`と対応するレイヤーごとのディレクトリにさらに分割する(Railsの`test/models/`, `test/controllers/`に相当)。`app/lib/`(`auth.py`/`permissions.py`/`validators.py`等、app内で共有するロジック。詳細はCommon Module Rulesを参照)のテストも同様に`tests/unit/lib/`に置く(例: `tests/unit/lib/auth_test.py`)。`tests/e2e/`はページ単位のテストのため、このレイヤー分割は行わない。
+`tests/unit/`配下は、ソース側の`models/`, `forms/`, `views/`, `services/`, `selectors/`, `validators/`, `lib/`と対応するレイヤーごとのディレクトリにさらに分割する(Railsの`test/models/`, `test/controllers/`に相当)。`app/lib/`(`auth.py`/`permissions.py`等、app内で共有するロジック。詳細はCommon Module Rulesを参照)のテストも同様に`tests/unit/lib/`に置く(例: `tests/unit/lib/auth_test.py`)。`app/errors/`・`app/messages/`・`app/rules/`(役割はError Rules/Message Rules/Rules Directory Rulesを参照)は単純な対応表であることが多く、分岐ロジックが生じた場合のみ`tests/unit/errors/`・`tests/unit/messages/`を追加する。`tests/e2e/`はページ単位のテストのため、このレイヤー分割は行わない。
 
 ## Layout Rules
 
@@ -181,7 +187,7 @@ CBVを使わずFBVを選んでいるのは、Railsのコントローラーのよ
 
 # タスク編集
 def edit(request, pk):
-    task = get_object_or_404(Task, pk=pk)
+    task = selectors.task.get_task_for_edit(task_id=pk, user=request.user)  # Viewは直接ORMを呼ばない(Selector Rules参照)
     if request.method == 'POST':
         return _update_task(request, task)
     return _display_edit_form(request, task)
@@ -197,18 +203,23 @@ def edit(request, pk):
 
 # 編集フォームを表示する
 def _display_edit_form(request, task):
-    form = TaskForm(instance=task)
+    form = TaskForm(initial=_task_initial(task))
     return _render_edit_form(request, task, form)
 
 
 # タスクの更新処理を行う
 def _update_task(request, task):
-    form = TaskForm(request.POST, instance=task)
+    form = TaskForm(request.POST)
     if not form.is_valid():
         return _render_edit_form(request, task, form)
-    services.task.update(form=form)
+    services.task.update(task=task, form=form)
     messages.success(request, 'タスクを更新しました。')
     return redirect('app:task_show', pk=task.pk)
+
+
+# instanceの現在値からFormの初期値を組み立てる(ModelFormを使わないため明示的に行う)
+def _task_initial(task):
+    return {'title': task.title, 'description': task.description, 'status': task.status}
 
 
 # タスク編集フォームのレンダリング
@@ -262,13 +273,18 @@ def _create_task(request):
 ### Example
 
 ```python
-# 避ける書き方(companyはform.save()の結果に影響しない。form.saveはform.instanceを使う)
+# 避ける書き方(引数のcompanyは使わず、form.cleaned_data内のIDから別途取得し直している)
 def update(company, form) -> Company:
-    return form.save()
+    company = Company.objects.get(pk=form.cleaned_data['company_id'])
+    company.name = form.cleaned_data['name']
+    company.save(update_fields=['name'])
+    return company
 
 # 良い書き方(実際に使う引数だけを、型注釈付きで受け取る)
-def update(*, form: CompanyForm) -> Company:
-    return form.save()
+def update(*, company: Company, form: CompanyForm) -> Company:
+    company.name = form.cleaned_data['name']
+    company.save(update_fields=['name'])
+    return company
 ```
 
 ## Partial Template Rules
@@ -331,7 +347,7 @@ app/static/app/
 
 `app/lib/`は、`models/`/`views/`/`forms/`/`services/`のいずれにも属さない補助的なコードの置き場である。業務ロジック(モデルへの書き込みを伴う処理)は`app/lib/`ではなく`app/services/`に置く(Service Rules参照)。serviceは補助的な共有コードではなく、`models/`/`views/`/`forms/`と同列の層として扱う。
 
-- **1つのアプリ内で共有**: `app/lib/` に置く(Railsの`lib/`相当)。`urls.py`/`apps.py`/`admin.py`のような、Djangoの規約でアプリ直下に置くと決まっているファイルはそのままアプリ直下に残し、開発者が追加した「app内で共有するロジック」だけを`app/lib/`にまとめる。役割ごとにファイルを分ける: 認証(ログイン等、誰であるかの検証)は`app/lib/auth.py`、権限(何ができるかの判定)は`app/lib/permissions.py`、複数モデルで使い回すバリデータは`app/lib/validators.py`、汎用ユーティリティは`app/lib/utils.py`(増えてきたら`app/lib/utils/`ディレクトリ化し、関心事ごとにファイル分割する。例: `utils/date.py`)。ナビゲーションバー・フラッシュメッセージ表示のような特定のモデルに属さないパーシャルテンプレート(`app/templates/common/`)も同じ考え方で、このアプリ専用の置き場に置く。「複数アプリ間で共有」に見えても、実際に共有先の別アプリが存在しない限りは、このアプリ内に留める。
+- **1つのアプリ内で共有**: `app/lib/` に置く(Railsの`lib/`相当)。`urls.py`/`apps.py`/`admin.py`のような、Djangoの規約でアプリ直下に置くと決まっているファイルはそのままアプリ直下に残し、開発者が追加した「app内で共有するロジック」だけを`app/lib/`にまとめる。役割ごとにファイルを分ける: 認証(ログイン等、誰であるかの検証)は`app/lib/auth.py`、汎用ユーティリティは`app/lib/utils.py`(増えてきたら`app/lib/utils/`ディレクトリ化し、関心事ごとにファイル分割する。例: `utils/date.py`)。ナビゲーションバー・フラッシュメッセージ表示のような特定のモデルに属さないパーシャルテンプレート(`app/templates/common/`)も同じ考え方で、このアプリ専用の置き場に置く。「複数アプリ間で共有」に見えても、実際に共有先の別アプリが存在しない限りは、このアプリ内に留める。バリデーション(Pure Function)や権限判定は補助的な共有コードではなく`app/validators/`・`app/permissions/`という同列の層として最初から扱う(Validator Rules参照)。
   - 例外: `app/management/commands/`(Djangoがこの場所を前提にコマンドを自動検出する)と`app/seeds/`(Seed Data Rules参照、モデルごとのデータ生成スクリプト群という別カテゴリ)は`app/lib/`に含めない。
   - **`app/lib/`配下のモジュールが肥大化した場合の昇格**: 関心事が独立したサブシステムと呼べる規模になった場合、`app/permissions/`のように`models/`/`views/`/`forms/`/`services/`等と同列のトップレベルディレクトリへ昇格してよい。昇格後は他のトップレベルディレクトリと同じ構成規則(ディレクトリ化・`__init__.py`配置・テストディレクトリの対応)に従う。
 - **複数アプリ間で共有**: `app/` と同列に共有専用アプリ `common/` を作り、`INSTALLED_APPS` に登録して置く。これは実際に2つ以上のアプリから使われるようになった時点で行う。
@@ -351,13 +367,16 @@ app/
 ├── admin.py
 ├── models/                  # 永続化・状態判定
 ├── views/                   # HTTPの入出力
-├── forms/                   # 入力検証
+├── forms/                   # 入力検証(画面単位。Validation Rules参照)
 ├── services/                # 業務ロジック・トランザクション境界
+├── selectors/               # Viewの読み取り窓口(Selector Rules参照)
+├── validators/              # Pure Functionの検証ロジック(Validator Rules参照)
+├── errors/                  # DomainError(言語非依存。Error Rules参照)
+├── messages/                # DomainErrorの日本語文言(Message Rules参照)
+├── rules/                   # Form/Validator/Serviceが共有する形式的制約(Rules Directory Rules参照)
 ├── lib/                     # 上記のどれにも属さない、app内で共有するコード
 │   ├── __init__.py
 │   ├── auth.py              # 認証ロジック(ログイン等、誰であるかの検証)
-│   ├── permissions.py       # 権限判定ロジック(何ができるかの判定)
-│   ├── validators.py        # 複数モデルで使い回すカスタムバリデータ
 │   └── utils.py             # 汎用ユーティリティ
 └── templates/
     └── common/              # appアプリ内で共有するパーシャルテンプレート
@@ -369,42 +388,96 @@ common/                    # 複数アプリ間で共有するモジュール(�
 └── mixins.py
 ```
 
-## Validator Rules
+## Form Rules
 
-モデルの複数フィールド・複数モデルで使い回したいカスタムバリデーションは、モデルファイルに直接書かず `app/lib/validators.py` に置く(増えてきたら `app/lib/utils/` と同様に `app/lib/validators/` ディレクトリ化する)。
+Djangoの`forms.ModelForm`は使用しない。フォームは常に`forms.Form`を継承し、フィールドを明示的に宣言する。
 
-- **単純な条件で使い回さない場合**: ただの関数で書く。値を1つ受け取り、不正なら`django.core.exceptions.ValidationError`を送出するだけでよい。
-- **パラメータ化して複数箇所で使い回したい場合**: `__call__(self, value)` を実装したクラスにする(Rails の `ActiveModel::EachValidator` に相当)。インスタンス化時の引数で条件をカスタマイズできる。
-- **クラスにする場合は必ず `@deconstructible` を付ける**: モデルフィールドの `validators=[...]` に渡すインスタンスは、マイグレーションファイルにシリアライズ(Pythonコードとして書き出し)できる必要がある。`django.utils.deconstruct.deconstructible` を付けないと `makemigrations` が `ValueError: Cannot serialize` で失敗する。
+- **理由**: `ModelForm`は「画面の入力」と「モデルの永続化フィールド」を暗黙に同一視し、`form.save()`でモデルへの書き込みがService層を経由せず直接発生してしまう(Service Rules参照)。フィールドをForm側で明示することで、画面の入力契約がFormだけを見て完結して読み取れるようにする
+- **編集画面の初期値**: `ModelForm(instance=...)`のような暗黙のバインドは使わない。`TaskForm(initial=_task_initial(task))`のように、instanceの現在値からinitial dictを明示的に組み立てるヘルパーをView側に用意する(View Method-Branch Rules参照)
+- **保存はFormの責務ではない**: `form.save()`はModelForm前提の機能のため存在しない。Formの役割は画面単位の検証(`cleaned_data`を作ること)までで、実際の保存は`app/services/`が`form.cleaned_data`から明示的にモデルへ反映する(Service Rules参照)
 
 ### Example
 
 ```python
-# app/lib/validators.py
-from django.core.exceptions import ValidationError
-from django.utils.deconstruct import deconstructible
+# app/forms/task.py
+from django import forms
+from app.models import Task
 
 
-# 指定した文字を含むことを要求するバリデータ
-@deconstructible
-class ContainsCharacterValidator:
-    def __init__(self, character, message=None):
-        self.character = character
-        self.message = message or f'{character}を含めてください。'
+class TaskForm(forms.Form):
+    title = forms.CharField(max_length=200)
+    description = forms.CharField(widget=forms.Textarea, required=False)
+    status = forms.ChoiceField(choices=Task.Status.choices)
+```
 
-    def __call__(self, value):
-        if self.character not in value:
-            raise ValidationError(self.message)
+## Validator Rules
+
+複数のFormフィールド・複数モデルで使い回したい検証ロジックは、Formやモデルファイルに直接書かず`app/validators/`に置く。ValidatorはPure Functionとする。
+
+- **配置**: 関心事ごとに`app/validators/<concern>.py`(複数モデルで共有する形式チェック等)、または単一モデルに強く紐づく場合は`app/validators/<model>.py`に置く
+- **Pure Functionの契約**: ORM/DBを呼ばない。Service/Selectorを呼ばない。`request`/`Form`インスタンスに依存しない。値を1つ受け取り、成功時はその値をそのまま返し、失敗時は`app/errors/`の`DomainError`(typed exception)を送出する
+- **Djangoの`ValidationError`を使わない**: 失敗時に送出するのはDjangoの`ValidationError`ではなく`DomainError`(Error Rules参照)。Validatorが例外を発生させた時点でエラーの種類(code)が確定している
+- **DB状態が必要な検証は対象外**: 重複チェックのようにDBを読む必要がある検証はPure Validatorではない。Formの画面内では完結できないため、Validation Rulesの第2段階(Service)の事前条件チェックとして書く(Validation Rules参照)
+- **呼び出し元**: Formの`clean_<field>()`(`DomainError`を`forms.ValidationError`に変換して画面表示する。Message Rules参照)と、Serviceの事前条件チェックの両方から同じ関数を呼べる。呼び出し元ごとにロジックを重複させないための共有点がこのレイヤー
+
+### Example
+
+```python
+# app/validators/employee.py
+import re
+from app import errors
+from app.rules.employee import EMPLOYEE_NUMBER_REGEX
+
+
+# 社員番号の形式を検証する。正しければそのまま返す
+def validate_employee_number_format(value: str) -> str:
+    if not re.match(EMPLOYEE_NUMBER_REGEX, value):
+        raise errors.employee.InvalidEmployeeNumberFormatError()
+    return value
 ```
 
 ```python
-# app/models/task.py
-from app.lib.validators import ContainsCharacterValidator
+# app/validators/__init__.py
+from . import employee
 
-description = models.TextField(
-    blank=True,
-    validators=[ContainsCharacterValidator('#', message='説明には関連するIssue番号(例: #123)を含めてください。')],
-)
+__all__ = ['employee']
+```
+
+## Rules Directory (共有制約) Rules
+
+Validator(Pure Function)とServiceのユースケース検証(Validation Rules/Error Rules参照)の両方から参照したい、DBに依存しない形式的な制約(正規表現・桁数などの定数)は`app/rules/`にまとめる。同じ正規表現が複数箇所に二重に書かれることを防ぐ。
+
+- **配置**: 単一モデルにのみ関係する制約は`app/rules/<model>.py`、複数モデルで共有する制約は関心事ごとのファイル(`app/rules/format.py`等)に置く
+- **`app/validators/`(Validator Rules)との違い**: `app/rules/`は正規表現・定数などのDjango非依存の値だけを持つ。`app/validators/`はその定数を使って実際に判定し、失敗時に`DomainError`を送出するPure Functionを置く場所
+- **DBを参照しない**: 純粋な定数・正規表現に限る。DBを参照する検証はValidation Rulesに従う
+
+### Example
+
+```python
+# app/rules/employee.py
+
+# 社員番号の形式(例: E0001)
+EMPLOYEE_NUMBER_REGEX = r'^E\d{4}$'
+```
+
+```python
+# app/forms/employee.py
+from django import forms
+from app import errors, messages as app_messages
+from app.validators.employee import validate_employee_number_format
+
+
+class EmployeeForm(forms.Form):
+    employee_number = forms.CharField(max_length=10)
+    ...
+
+    # 画面単位の形式チェック(Validation Rulesの第1段階)。ValidatorのDomainErrorを画面表示用に変換する
+    def clean_employee_number(self):
+        value = self.cleaned_data['employee_number']
+        try:
+            return validate_employee_number_format(value)
+        except errors.base.DomainError as error:
+            raise forms.ValidationError(app_messages.employee.message_for_error(error)) from error
 ```
 
 ## Mixin/Base Naming Rules
@@ -519,53 +592,206 @@ class Command(BaseCommand):
         seeds.employee.create()
 ```
 
-## Model Validation Rules
+## Validation Rules
 
-検証ロジックはモデルに集約する。フィールドの`validators=[...]`と`clean()`に書き、フォームには書かない。同じルールを複数のフォームで重複させないため。
+検証は1箇所に集約せず、判断できるタイミングごとに3段階へ分ける。同じチェックをどの段階にも重複して書かない。
 
-モデルは`save()`をオーバーライドして`full_clean()`を呼ぶ。ModelForm経由の保存では`is_valid()`が内部でモデルの検証を実行するため重複するが、**フォームを伴わないservice(状態遷移など)や管理コマンドからの保存では、この`save()`が唯一の検証機会になる**ため、常に呼ぶ形にする。
+1. **Form(画面単位)**: 今の画面の入力形式・必須項目など、その画面だけで判断できる検証。`clean_<field>()`/`clean()`に書く(Form Rules参照)。再利用したい判定は`app/validators/`のPure Functionを呼ぶ(Validator Rules参照)。他画面の未入力や、DBを参照する業務判断(重複チェック等)はここに書かない
+2. **ユースケース検証(Service)**: 確定・状態遷移など、複数の入力が揃って初めて判断できる業務ルール。DB参照を伴う重複チェックなどの事前条件もここに書く。`app/services/`が`app/errors/`の`DomainError`を直接送出する(Djangoの`ValidationError`を介さない。Error Rules/Service Rules参照)
+3. **DB制約(最終防衛)**: `unique=True`/`Meta.constraints`(`UniqueConstraint`/`CheckConstraint`)など、DB自身が保証できる不変条件だけを書く。Modelに独自の`clean()`/`full_clean()`は実装しない(禁止。下記「Model(第3段階): 禁止事項」参照)
 
-- `clean()`でのエラーは、原因が1つのフィールドに特定できる場合は辞書形式`ValidationError({'field_name': 'メッセージ'})`で送出し、フォーム経由なら該当フィールドの直下にエラーが表示されるようにする。複数フィールドの組み合わせ(重複チェック等、どちらのフィールドが「悪い」とは言えない場合)は非フィールドエラーとして文字列`ValidationError('メッセージ')`のまま送出する
-- `bulk_create()`/`bulk_update()`/`queryset.update()`/生SQLは`save()`を通らないため検証されない。検証ロジックを持つモデルに対してこれらを使わない。他レコードを連動して更新する必要がある場合(例: 主務フラグの切り替え)は、その手順ごとserviceに置く(Service Rules参照)
-- `clean()`でDBを参照する検証(重複チェック等)を書くと、フォーム経由の保存でクエリが2回発行される。ループでの大量保存には向かないため、その場合は別途検討する
+「その画面の入力だけで判断できるか(1)」「業務全体の整合性が必要か(2)」「DBが機械的に保証できる制約か(3)」で置き場所を切り分ける。予測可能な業務エラー(利用者が普通に発生させ得るもの)はDjangoの`ValidationError`を経由させず、2の段階でServiceが`DomainError`を直接送出する形にする。複数モデルを跨ぐ整合性(例: 親部門と部門が同じ会社に属すること)のようにDB制約として表現できない業務ルールは、2のService事前条件チェックが唯一の砦になる。実装漏れがないことはレビューで担保する。
 
-(注: `save()`で`full_clean()`を常に呼ぶという方針自体は、まだ確信が持てていない試験的なルールで、今後変更する可能性がある)
+### Model(第3段階): 禁止事項
+
+- **`clean()`/`full_clean()`の独自実装・呼び出しを禁止する**: Modelはフィールド定義・DB制約・自身のインスタンス値だけで完結するpureなメソッド(状態判定など)だけを持つ。DBを参照する検証やモデル間の整合性チェックはModelに書かない
+- **`save()`/`delete()`のオーバーライドを禁止する**: Serviceが呼び出しの起点を一元管理する(Service Rules参照)。Modelの`save()`にフックを増やさない
+- **Modelのメソッド内でORMクエリを呼ばない**: `self.related_set.filter(...)`のような関連経由の暗黙アクセスも含め、Model メソッドは自分自身の属性値だけで判定する。DBを参照する判定はSelector(読み取り)かService(書き込み前提条件)に置く
+- **重複チェック等、DBで機械的に保証できる制約は`Meta.constraints`に書く**: `models.UniqueConstraint(fields=[...])`のようにDB自身が守れる形に落とし込めるなら、Serviceの事前条件チェックに加えてDB制約も設定する(競合時の最終防衛)。DB制約で表現できない場合はServiceの事前条件チェックのみになる
 
 ### Example
 
 ```python
-from django.core.exceptions import ValidationError
 from django.db import models
 
 
+class DepartmentQuerySet(models.QuerySet):
+
+    # 同じ会社・同じ名前の部門に絞り込む(自分自身は除く)。Serviceの事前条件チェックから呼ぶ(QuerySet Rules参照)
+    def duplicate_of(self, *, company, name, exclude_pk=None):
+        queryset = self.filter(company=company, name=name)
+        if exclude_pk is not None:
+            queryset = queryset.exclude(pk=exclude_pk)
+        return queryset
+
+
 class Department(models.Model):
+    objects = DepartmentQuerySet.as_manager()
     company = models.ForeignKey(Company, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
 
-    # 同じ会社内で部門名が重複しないようにする(company/nameのどちらが悪いとも言えないため非フィールドエラー)
-    def clean(self):
-        duplicates = Department.objects.filter(company=self.company, name=self.name).exclude(pk=self.pk)
-        if duplicates.exists():
-            raise ValidationError('この会社には同じ名前の部門が既に存在します。')
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
+    class Meta:
+        # DB自身が保証できる制約(競合時の最終防衛)
+        constraints = [
+            models.UniqueConstraint(fields=['company', 'name'], name='unique_department_name_per_company'),
+        ]
 ```
 
 ```python
 class DepartmentHierarchy(models.Model):
     department = models.OneToOneField(Department, on_delete=models.CASCADE)
     parent_department = models.ForeignKey(Department, null=True, blank=True, on_delete=models.CASCADE)
+    # 「parent_departmentはdepartmentと同じ会社に属する」はモデルを跨ぐ整合性でありDB制約で表現できないため、
+    # Serviceの事前条件チェック(下記set_parent_department())が唯一の検証になる
+```
 
-    # 親部門が不正な場合、原因はparent_departmentフィールドに特定できるためフィールドエラーにする
-    def clean(self):
-        if self.parent_department and self.parent_department.company_id != self.department.company_id:
-            raise ValidationError({'parent_department': '親部門は同じ会社に属している必要があります。'})
+```python
+# app/services/department.py
+from app import errors
 
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
+
+def rename(*, department: Department, name: str) -> Department:
+    # 1. 検証(事前条件。DjangoのValidationErrorを介さずDomainErrorを直接送出する)
+    if Department.objects.duplicate_of(company=department.company, name=name, exclude_pk=department.pk).exists():
+        raise errors.department.DuplicateDepartmentNameError()
+
+    # 2. 変更(UniqueConstraintが競合時の最終防衛になる。IntegrityErrorはバグとしてそのまま伝播させる)
+    department.name = name
+    department.save(update_fields=['name'])
+    return department
+
+
+# 親部門を設定する(複数モデルを跨ぐ整合性はDB制約で表現できないため、ここが唯一の検証になる)
+def set_parent_department(*, hierarchy: DepartmentHierarchy, parent_department: Department) -> DepartmentHierarchy:
+    if parent_department.company_id != hierarchy.department.company_id:
+        raise errors.department.ParentDepartmentCompanyMismatchError()
+
+    hierarchy.parent_department = parent_department
+    hierarchy.save(update_fields=['parent_department'])
+    return hierarchy
+```
+
+## Error Rules
+
+予測可能な業務失敗(利用者が普通に発生させ得るもの)は、Djangoの`ValidationError`を経由させず、`app/errors/`に定義する言語非依存の`DomainError`(typed exception)として最初から直接送出する。エラーの発生条件(コード)と表示文言(日本語)を分離し、文言変更・多言語化のためにドメイン層を触らずに済むようにする。
+
+- **配置**: 基底クラスを`app/errors/base.py`に置き、モデル・業務領域ごとに`app/errors/<model>.py`へ具体的なエラーを定義する。`__init__.py`はView/Serviceと同様にモジュール単位でインポートする
+- **形**: `code`(文字列)と`params`(dict)を持つdataclassベースの例外にする。メッセージ文字列は持たない
+- **業務エラーにDjangoの`ValidationError`を使わない**: `DomainError`はDjangoの`ValidationError`を継承・変換せず、独立した例外として定義する。ModelもValidatorも`clean()`/`full_clean()`を使わないため(Validation Rules/Validator Rules参照)、業務エラーの経路にDjangoの`ValidationError`は登場しない。Formの`clean_<field>()`が画面表示のために送出する`forms.ValidationError`は、あくまで画面(Django Form)自身の仕組みであり、`DomainError`とは別物として扱う
+- **`app/models/`との関係**: 状態判定(`can_complete()`等)はこれまで通りModelが真偽値メソッドとして持ち、`DomainError`の送出はService側が担う(Service Rulesの「modelとの役割分担」参照)。Model自身は`app/errors/`をimportせず、`DomainError`を送出しない
+- **programmer errorを握り潰さない**: DB制約違反(`IntegrityError`)など、Serviceの事前条件チェックをすり抜けて発生した想定外のエラーを`DomainError`に変換して隠さない。バグまたは競合として通常の例外のまま伝播させる
+- `app/errors/`は他のどの層(`views/`, `messages/`等)にも依存しない
+- **importの書き方**: 共通基底クラスの`DomainError`は名前衝突の心配がないため`from app.errors.base import DomainError`のように直接importしてよい。モデル固有のエラークラス(`TaskNotCompletableError`等)は他層と同様に`from app import errors`のうえで`errors.<model>.XxxError`とモジュール修飾して参照する(View/Service/Selectorと同じ規約)
+
+### Example
+
+```python
+# app/errors/base.py
+from dataclasses import dataclass, field
+from typing import Any
+
+
+@dataclass(eq=False)
+class DomainError(Exception):
+    code: str
+    params: dict[str, Any] = field(default_factory=dict)
+```
+
+```python
+# app/errors/task.py
+from app.errors.base import DomainError
+
+
+# 未完了の子タスクが残っているため完了できない
+class TaskNotCompletableError(DomainError):
+    def __init__(self, *, task_id: int) -> None:
+        super().__init__(code='task_not_completable', params={'task_id': task_id})
+```
+
+```python
+# app/errors/department.py
+from app.errors.base import DomainError
+
+
+# 同じ会社内に同名の部門が既に存在する(Service側の事前条件チェックで送出)
+class DuplicateDepartmentNameError(DomainError):
+    def __init__(self) -> None:
+        super().__init__(code='duplicate_department_name')
+
+
+# 親部門が同じ会社に属していない(Service側の事前条件チェックで送出)
+class ParentDepartmentCompanyMismatchError(DomainError):
+    def __init__(self) -> None:
+        super().__init__(code='parent_department_company_mismatch')
+```
+
+```python
+# app/errors/employee.py
+from app.errors.base import DomainError
+
+
+# 社員番号の形式が不正(Validatorから送出)
+class InvalidEmployeeNumberFormatError(DomainError):
+    def __init__(self) -> None:
+        super().__init__(code='invalid_employee_number_format')
+```
+
+```python
+# app/errors/__init__.py
+from . import base
+from . import department
+from . import employee
+from . import task
+
+__all__ = ['base', 'department', 'employee', 'task']
+```
+
+## Message Rules
+
+Error Rulesで定義した`DomainError`のコードを日本語文言に変換する処理は、モデル・業務領域ごとに`app/messages/<model>.py`にまとめる。ドメイン層(`models/`, `services/`, `errors/`)は日本語文言を一切持たない。
+
+- **配置**: `app/messages/<model>.py`に、そのモデルに関する`DomainError`のコード→文言の対応表(`ERROR_MESSAGES`)と、対応する`message_for_error()`関数を定義する
+- **Djangoの`django.contrib.messages`との名前衝突**: Viewでは`from django.contrib import messages`を使うため、`app/messages/`パッケージは`from app import messages as app_messages`のようにエイリアスしてimportし、どちらを指しているか一目で分かるようにする
+- **Viewでの使い方**: Serviceが送出した`DomainError`をViewの`try/except`で受け、`message_for_error()`で文言化してから`django.contrib.messages.error()`に渡す
+- **Formでの使い方**: `app/validators/`のPure Functionが送出した`DomainError`をFormの`clean_<field>()`が受け、`message_for_error()`で文言化してから`forms.ValidationError(text)`として画面表示する(Form Rules/Validator Rules参照)。ここでも文言のハードコードはしない
+- **成功時の文言**: 成功メッセージ(`messages.success()`)は業務エラーではないため`DomainError`を経由しない。従来通りView側にそのまま日本語文字列で書いてよい
+- **未知のコード**: 対応表にないコードのために、`message_for_error()`はデフォルトの汎用メッセージ(例:「処理を完了できませんでした。」)を返すようにする
+
+### Example
+
+```python
+# app/messages/task.py
+from app.errors.base import DomainError
+
+ERROR_MESSAGES = {
+    'task_not_completable': '未完了の子タスクが残っているため、このタスクは完了できません。',
+}
+
+
+# DomainErrorを日本語メッセージに変換する
+def message_for_error(error: DomainError) -> str:
+    return ERROR_MESSAGES.get(error.code, '処理を完了できませんでした。')
+```
+
+```python
+# app/messages/employee.py
+from app.errors.base import DomainError
+
+ERROR_MESSAGES = {
+    'invalid_employee_number_format': '社員番号は E0001 のような形式で入力してください。',
+}
+
+
+def message_for_error(error: DomainError) -> str:
+    return ERROR_MESSAGES.get(error.code, '入力内容を確認してください。')
+```
+
+```python
+# app/messages/__init__.py
+from . import employee
+from . import task
+
+__all__ = ['employee', 'task']
 ```
 
 ## Service Rules
@@ -574,7 +800,9 @@ class DepartmentHierarchy(models.Model):
 
 処理の複雑さによって置き場所を変えない。単純な作成・更新であっても例外を設けない。複雑さで分岐させると「これはserviceに置くべきか」という判断が毎回発生し、実装者ごと・セッションごとにブレるため。単純な処理のserviceは数行になるが、後から業務ルールが増えたときにviewを触らずに済み、変更のdiffが「機能追加」だけになる。
 
-読み取りは対象外。一覧・詳細取得はviewから直接ORMを呼んでよい。絞り込み条件はQuerySet Rulesに従いカスタムQuerySetに置く。serviceは書き込み専用とする。
+読み取りは対象外。Viewからの読み取りはすべてSelector Rulesに従い`app/selectors/`に置く。serviceは書き込み専用とする。
+
+**serviceはselectorを呼ばない。** 事前条件チェックのためにDBを読む必要がある場合(重複チェック等)も、Selectorは経由せずservice自身がORM/QuerySetで直接読む(QuerySet Rulesのカスタムメソッドは共有してよい)。読み取りロジックの再利用より依存方向を優先する。同じ理由でSelectorもserviceを呼ばない(Selector Rules参照)。
 
 ### 構成
 
@@ -595,7 +823,7 @@ class DepartmentHierarchy(models.Model):
 
 処理は以下の順に書く。この順序により、ガード節が先頭に集まり、外部への通知がDB変更の確定後になる。該当しない段階は省略してよい。
 
-1. **検証** — 業務条件を満たさなければ例外を送出して終了
+1. **検証** — 業務条件を満たさなければ`app/errors/`の`DomainError`を送出して終了(Error Rules参照)
 2. **変更** — モデルの更新・関連レコードの作成
 3. **記録** — 履歴・監査ログ
 4. **通知** — メール送信・外部システム連携
@@ -605,11 +833,12 @@ class DepartmentHierarchy(models.Model):
 ### serviceが持たないもの
 
 - `django.contrib.messages`の呼び出し
+- 日本語のエラー文言(`DomainError`のcodeのみ送出し、文言は`app/messages/`が担当。Message Rules参照)
 - `redirect`/HTTPステータス/テンプレート名
-- `get_object_or_404`
+- `get_object_or_404`(Selector Rules参照)
 - 画面遷移に関する判断
 
-業務条件を満たさない場合は、リダイレクトではなく例外を送出する。viewが受け取って`messages`と画面遷移に変換する。
+業務条件を満たさない場合は、リダイレクトではなく`DomainError`を送出する(Error Rules参照)。viewが受け取って`app/messages/`で文言化し(Message Rules参照)、`messages`と画面遷移に変換する。
 
 ### modelとの役割分担
 
@@ -629,32 +858,37 @@ serviceが持つのは操作の手順であり、状態の意味ではない。
 class Task(models.Model):
     ...
 
-    # 完了可能な状態かどうか
+    # 完了可能な状態かどうか(自身のstatusのみで判定するpureなメソッド)
     def can_complete(self):
-        if self.status == Task.Status.COMPLETED:
-            return False
-        return not self.children.exclude(status=Task.Status.COMPLETED).exists()
+        return self.status != Task.Status.COMPLETED
 ```
 
 ```python
 # app/services/task.py
 from django.db import transaction
+from app import errors
 
-# タスクを作成する
+# タスクを作成する(ModelFormを使わないため、cleaned_dataから明示的にモデルへ反映する)
 def create(*, form: TaskForm) -> Task:
-    return form.save()
+    return Task.objects.create(
+        title=form.cleaned_data['title'],
+        description=form.cleaned_data['description'],
+        status=form.cleaned_data['status'],
+    )
 
 # タスクを完了にする
 @transaction.atomic
 def complete(*, task: Task, operator: User) -> Task:
-    # 1. 検証
+    # 1. 検証(自身のstatusはModelのpureなメソッドで判定し、DBを参照する子タスクの状態はここで直接読む)
     if not task.can_complete():
-        raise ValidationError('このタスクは完了できません。')
+        raise errors.task.TaskNotCompletableError(task_id=task.id)
+    if task.children.exclude(status=Task.Status.COMPLETED).exists():
+        raise errors.task.TaskNotCompletableError(task_id=task.id)
 
     # 2. 変更
     task.status = Task.Status.COMPLETED
     task.completed_at = timezone.now()
-    task.save()
+    task.save(update_fields=['status', 'completed_at'])
 
     # 3. 記録
     TaskHistory.objects.create(task=task, action='completed', operator=operator)
@@ -666,13 +900,15 @@ def complete(*, task: Task, operator: User) -> Task:
 
 ```python
 # app/views/task.py
+from app import messages as app_messages
+from app.errors.base import DomainError
 
 # タスク完了処理を行う
 def _complete_task(request, task):
     try:
         services.task.complete(task=task, operator=request.user)
-    except ValidationError as error:
-        messages.error(request, error.message)
+    except DomainError as error:
+        messages.error(request, app_messages.task.message_for_error(error))
         return redirect('app:task_show', pk=task.pk)
 
     messages.success(request, 'タスクを完了しました。')
@@ -684,6 +920,63 @@ def _complete_task(request, task):
 from . import task
 
 __all__ = ['task']
+```
+
+## Selector Rules
+
+**Viewの読み取りはすべてSelectorを経由する。** ViewはModel/QuerySetを直接呼ばない(`get_object_or_404`も含む)。単一取得・一覧取得の両方を`app/selectors/<model>.py`に関数として置く。
+
+- **配置**: `app/selectors/<model>.py`に関数として定義する。`__init__.py`はView/Serviceと同様にモジュール単位でインポートし、呼び出し側は`selectors.<model>.<関数名>`の形で参照する
+- **命名**: 単一取得は`get_<noun>`、一覧取得は`list_<複数形>`とする(例: `get_task`, `list_tasks`)
+- **単一取得**: keyword-only引数を受け取り、`get_object_or_404`で取得する。404にするのは「存在しない/権限のスコープ外」だけ。所有者・権限によるスコープはQuerySet Rulesのカスタムメソッド(`owned_by`等)に寄せ、selectorはそれを`get_object_or_404`に渡すだけにする
+- **業務ルールによる操作不可(ステータスが不正・ロック中など)は404にしない**: 「存在はするが今は編集できない」はSelectorではなくServiceが`DomainError`を送出する形にする(Error Rules参照)。混同するとURLを直接叩いた場合の挙動(404 かエラーメッセージか)が食い違う
+- **一覧取得**: ページネーション等の都合があるため、評価前の`QuerySet`を返す。Viewがそれをページネーションする
+- **selectorはserviceを呼ばない。書き込みも行わない**: 読み取り専用に徹する(QuerySet Rulesと同じ制約)
+- 権限スコープが異なる複数の取得経路がある場合(編集用/参照用等)は、`get_task_for_edit`のように用途で関数を分ける
+
+### Example
+
+```python
+# app/selectors/task.py
+from django.contrib.auth.models import AbstractBaseUser
+from django.db.models import QuerySet
+from django.shortcuts import get_object_or_404
+from app.models import Task
+
+
+# 編集対象のタスクを取得する(担当者以外には404)
+def get_task_for_edit(*, task_id: int, user: AbstractBaseUser) -> Task:
+    return get_object_or_404(Task.objects.assigned_to(user), pk=task_id)
+
+
+# タスク一覧を取得する(未評価のQuerySetを返す。ページネーションはView側)
+def list_tasks() -> QuerySet[Task]:
+    return Task.objects.with_details()
+```
+
+```python
+# app/selectors/__init__.py
+from . import task
+
+__all__ = ['task']
+```
+
+```python
+# app/views/task.py
+from app import selectors
+
+@login_required
+def index(request: HttpRequest) -> HttpResponse:
+    tasks_qs = selectors.task.list_tasks()
+    paginator = Paginator(tasks_qs, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    return render(request, 'app/task/index.html', {'tasks': page_obj, 'page_obj': page_obj})
+
+
+@login_required
+def edit(request: HttpRequest, pk: int) -> HttpResponse:
+    task = selectors.task.get_task_for_edit(task_id=pk, user=request.user)
+    ...
 ```
 
 ## QuerySet Rules
