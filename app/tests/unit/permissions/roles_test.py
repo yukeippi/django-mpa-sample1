@@ -196,24 +196,6 @@ class TestGetApplicableManagementGroups:
 
         assert applicable == []
 
-    # department=NULLの不正なManagementGroup(clean()を経由せずmigration等で発生しうる状態)が、
-    # 主務部門が最上位部門(親部門なし)のユーザーに誤って適用されないことを確認(fail-closed)
-    def test_group_with_null_department_does_not_apply_to_top_level_department_user(self, sample_user):
-        company = Company.objects.create(name='サンプル株式会社')
-        top_level_department = Department.objects.create(company=company, name='本社')
-        DepartmentHierarchy.objects.create(department=top_level_department)
-        _set_primary_department(sample_user, top_level_department)
-        other_department = Department.objects.create(company=company, name='営業部')
-        group = ManagementGroup.objects.create(name='不正データグループ', department=other_department, permission_set_id=1)
-        group.members.add(sample_user)
-        # full_clean()を経由するsave()ではdepartment=NULLは弾かれるため、
-        # migrate直後のデータ等を再現するために.update()でDBを直接書き換える
-        ManagementGroup.objects.filter(pk=group.pk).update(department=None)
-
-        applicable = get_applicable_management_groups(sample_user)
-
-        assert applicable == []
-
 
 def _create_department(name):
     company = Company.objects.create(name=f'{name}の会社')

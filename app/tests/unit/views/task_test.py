@@ -108,13 +108,13 @@ class TestTaskCreateView:
 @pytest.mark.django_db
 class TestTaskEditView:
 
-    # GETリクエストで既存タスクの値がフォームに入っていることを確認
-    def test_get_returns_form_with_instance(self, auth_client, sample_user):
+    # GETリクエストで既存タスクの値がフォームの初期値に入っていることを確認
+    def test_get_returns_form_with_initial_values(self, auth_client, sample_user):
         task = Task.objects.create(title='Original Title', created_by=sample_user)
 
         response = auth_client.get(f'/tasks/{task.id}/edit/')
         assert response.status_code == 200
-        assert response.context['form'].instance == task
+        assert response.context['form'].initial['title'] == task.title
 
     # 有効なデータでPOSTするとタスクが更新され詳細ページにリダイレクトされることを確認
     def test_post_valid_data_updates_task_and_redirects(self, auth_client, sample_user):

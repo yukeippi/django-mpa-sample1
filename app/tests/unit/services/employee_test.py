@@ -1,4 +1,5 @@
 import pytest
+from app.errors.employee import DuplicateEmployeeNumberError
 from app.forms.employee import EmployeeForm
 from app.models import Employee
 from app.services import employee as employee_service
@@ -11,7 +12,7 @@ class TestCreate:
     def test_creates_user_and_employee(self):
         form = EmployeeForm(data={
             'employee_number': 'E0200', 'last_name': '鈴木', 'first_name': '花子', 'password': 'pass12345',
-        })
+        }, is_new=True)
         assert form.is_valid()
 
         employee = employee_service.create(form=form)
@@ -21,6 +22,17 @@ class TestCreate:
         assert employee.user.first_name == '花子'
         assert employee.user.last_name == '鈴木'
         assert employee.user.check_password('pass12345')
+
+    # 社員番号が重複する場合はDuplicateEmployeeNumberErrorが送出されることを確認
+    def test_duplicate_employee_number_raises_error(self, sample_user):
+        form = EmployeeForm(data={
+            'employee_number': sample_user.employee.employee_number,
+            'last_name': '鈴木', 'first_name': '花子', 'password': 'pass12345',
+        }, is_new=True)
+        assert form.is_valid()
+
+        with pytest.raises(DuplicateEmployeeNumberError):
+            employee_service.create(form=form)
 
 
 @pytest.mark.django_db
@@ -33,7 +45,7 @@ class TestUpdate:
         form = EmployeeForm(data={
             'employee_number': employee.employee_number, 'last_name': '変更後姓', 'first_name': '変更後名',
             'password': '',
-        }, instance=employee)
+        })
         assert form.is_valid()
 
         employee_service.update(employee=employee, form=form)
@@ -49,13 +61,37 @@ class TestUpdate:
         form = EmployeeForm(data={
             'employee_number': employee.employee_number, 'last_name': '山田', 'first_name': '太郎',
             'password': 'newpass456',
-        }, instance=employee)
+        })
         assert form.is_valid()
 
         employee_service.update(employee=employee, form=form)
         sample_user.refresh_from_db()
 
         assert sample_user.check_password('newpass456')
+
+    # 自分自身の社員番号との重複はエラーにならないことを確認(社員番号を変更しない更新)
+    def test_updating_with_same_employee_number_does_not_raise_error(self, sample_user):
+        employee = sample_user.employee
+        form = EmployeeForm(data={
+            'employee_number': employee.employee_number, 'last_name': '山田', 'first_name': '太郎', 'password': '',
+        })
+        assert form.is_valid()
+
+        updated_employee = employee_service.update(employee=employee, form=form)
+
+        assert updated_employee.employee_number == employee.employee_number
+
+    # 他人の社員番号に変更しようとするとDuplicateEmployeeNumberErrorが送出されることを確認
+    def test_duplicate_employee_number_raises_error(self, sample_user, other_user):
+        employee = sample_user.employee
+        form = EmployeeForm(data={
+            'employee_number': other_user.employee.employee_number,
+            'last_name': '山田', 'first_name': '太郎', 'password': '',
+        })
+        assert form.is_valid()
+
+        with pytest.raises(DuplicateEmployeeNumberError):
+            employee_service.update(employee=employee, form=form)
 
 
 @pytest.mark.django_db

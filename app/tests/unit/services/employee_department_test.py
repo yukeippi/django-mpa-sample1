@@ -1,5 +1,6 @@
 import pytest
 from django.contrib.auth.models import User
+from app.errors.employee_department import DuplicateEmployeeDepartmentError
 from app.models import Company, Department, Employee
 from app.services import employee_department as employee_department_service
 
@@ -49,6 +50,15 @@ class TestCreate:
 
         relation_b.refresh_from_db()
         assert relation_b.is_primary is True
+
+    # 同じ社員・部門の組み合わせが重複する場合はDuplicateEmployeeDepartmentErrorが送出されることを確認
+    def test_duplicate_pair_raises_error(self):
+        employee = _create_employee('E8006')
+        department = _create_department('開発部')
+        employee_department_service.create(employee=employee, department=department)
+
+        with pytest.raises(DuplicateEmployeeDepartmentError):
+            employee_department_service.create(employee=employee, department=department)
 
 
 def _create_employee(employee_number: str) -> Employee:

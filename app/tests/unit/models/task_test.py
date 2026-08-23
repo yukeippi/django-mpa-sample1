@@ -1,6 +1,6 @@
 import pytest
 from datetime import date, timedelta
-from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from app.models import Task
 
 
@@ -103,11 +103,10 @@ class TestTaskModel:
         task = Task.objects.create(title='Done Task', status='done')
         assert task.can_be_completed() is False
 
-    # 優先度が1-5の範囲外の場合、バリデーションエラーが発生することを確認
-    def test_priority_validation(self):
-        task = Task(title='Invalid Priority Task', priority=6)
-        with pytest.raises(ValidationError):
-            task.full_clean()
+    # 優先度が1-5の範囲外の場合はエラーになることを確認(DB制約。Formのmin_value/max_valueが一次防衛)
+    def test_priority_must_be_in_valid_range(self):
+        with pytest.raises(IntegrityError):
+            Task.objects.create(title='Invalid Priority Task', priority=6)
 
     # タスクとユーザーの関連が正しく機能することを確認
     def test_task_user_relationship(self, sample_user):
