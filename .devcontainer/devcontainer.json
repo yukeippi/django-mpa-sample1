@@ -1,5 +1,5 @@
 {
-  "name": "Django 5.2 Development Environment",
+  "name": "Django MPA Sample1",
   "dockerComposeFile": [
     "docker-compose.yml"
   ],
