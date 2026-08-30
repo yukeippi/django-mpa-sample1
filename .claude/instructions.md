@@ -319,10 +319,10 @@ class Task(models.Model):
 > **このテンプレートには ADR を同梱しない。** `docs/adr/` はコピー先のプロジェクトで作り始める。`ModelForm`を使わない・Modelにライフサイクルメソッドを実装しない等、この規約集が既に定めている決定は、代替案の検討がテンプレート側で完了しており、コピー先で記憶に基づいて後から書けない(下記「AIの関与」の推測禁止に抵触する)。ADRに残すのはコピー先で新たに下した決定に限る。
 
 - **配置**: `docs/adr/NNNN-<kebab-case-title>.md`。番号は4桁の連番で、ファイル名は番号から始める(`adr-`のようなプレフィックスを付けない)。検討が流れて欠番になっても埋めない
-- **ヘッダ**: 本文冒頭に `Status` と `Date`(`YYYY-MM-DD`)を置く。supersede 関係がある場合は新しい側に `Supersedes: ADR-NNNN` を足す
+- **ヘッダ**: 本文冒頭に `Status` と `Date`(`YYYY-MM-DD`、決定した日。supersedeされても変えない)を置く。supersede 関係がある場合は新しい側に `Supersedes: ADR-NNNN` を足す
 - **`Status` の値**: `Accepted` か `Superseded by ADR-NNNN` のみ。「決定した直後に書く」運用のため `Proposed` は使わない
 - **本文の構成**: `## 背景` → `## 決定`(上記のとおり要約のみ) → `## 却下した案`(1案ごとに「案 → 却下理由」を書く) → `## 影響`(移行作業と、影響を受けるファイルの列挙)
-- **索引**: `docs/adr/README.md` に「番号・タイトル・Status」の表を置く。ADRを追加・変更したら索引も同じPRで更新する。`docs/adr/` 内で本文を書き換えてよいのは索引だけ(索引だけは現在の状態を表すファイルのため)
+- **索引**: `docs/adr/README.md` に「番号・タイトル・Status」の表を置く。ADRを追加・変更したら索引も同じPRで更新する。`docs/adr/` 内で既存の記述を書き換えてよいのは、索引と、supersedeされた側のADRの `Status` 行だけ(ADR本文は書き換えない。下記「追記のみ」)
 - **書くタイミング**: 決定した直後に、規約の更新と同じPRに含める。後から書くと検討の記憶が失われ、結論だけの文書になる。結論はこのファイルに書いてあるため、それではADRの価値が無い
 
 ### 書く対象
@@ -342,7 +342,7 @@ class Task(models.Model):
 一度マージしたADRの本文は書き換えない。決定が変わった場合は新しいADRを追加し、両方に相互参照を書く。
 
 - 新しい側に `Supersedes: ADR-NNNN` を書く
-- 古い側の `Status` を `Superseded by ADR-NNNN` に変更する。本文・却下した案はそのまま残す
+- 古い側の `Status` を `Superseded by ADR-NNNN` に変更する(索引の行も同じPRで合わせる。ずれた場合はADR本体を正とする)。本文・却下した案はそのまま残す
 - 古いADRを削除しない。「なぜ以前その案を採ったのか」と「なぜやめたのか」が両方残っていないと、同じ検討が繰り返される
 - そのADRを `経緯:` で参照している規約セクションの行を、新しい番号に書き換える(ADR側は追記のみだが、このファイルは常に現在の正解を指す)
 
@@ -357,78 +357,79 @@ class Task(models.Model):
 
 参照は一方向にする。双方向にするとリンクが腐る。
 
-- ADRの対象になった規約セクションの末尾にだけ、`経緯: ADR-NNNN` を一行で書く(この方向のみ)
+- ADRの対象になった規約セクションの末尾にだけ、`経緯: ADR-NNNN` を一行で書く(この方向のみ)。原則 `##` セクションの末尾に付け、対象が特定の `###` サブセクションに限られる場合だけそちらに付ける。同じADRへの `経緯:` を複数箇所に書かない
 - **コードからADRへのリンクは書かない**: 決定が変わるとADR番号が変わり、コード側のコメントが古い番号を指したまま残る。コメント量も元に戻る
 - **例外**: 現在の規約に違反しているように見えるコードにだけ、対象外である旨と期限をコメントで書く(移行期間中の箇所など)
 
 ### Example
 
-以下は書式の例示。番号・タイトル・日付は仮のもので、コピー先の実際のADRとは対応しない。ここでは **コピー先が最初に ADR-0004 で「`save()` から `full_clean()` を呼ぶ」と決め、後にそれを覆して ADR-0011 にした** という想定にしている(ADR-0004・0011 はどちらもコピー先のADR。テンプレート由来の規約にADRは付かない)。
+以下は書式の例示。題材(非同期処理基盤の選定)はテンプレートと無関係な、コピー先で新たに下した決定の想定。コピー先が最初 ADR-0003 で django-q2 を採用し、後に Celery へ移行して ADR-0009 で置き換えた、という筋にしている。番号・日付は仮。
 
 ```
 docs/adr/
-├── README.md                                  # 索引(番号・タイトル・Status)
-├── 0004-call-full-clean-from-save.md          # Superseded by ADR-0011
-└── 0011-no-lifecycle-methods-on-model.md
+├── README.md                          # 索引(番号・タイトル・Status)
+├── 0003-async-backend-django-q2.md    # Superseded by ADR-0009
+└── 0009-async-backend-celery.md
 ```
 
 ```markdown
-# ADR-0011: Model に clean() / full_clean() / save() / delete() を実装しない
+# ADR-0009: 非同期処理基盤を Celery + Redis にする
 
 Status: Accepted
 Date: 2026-08-20
-Supersedes: ADR-0004
+Supersedes: ADR-0003
 
 ## 背景
 
-モデルへの書き込み経路が Service と Model の二本になり、どちらを通ったかで
-検証の有無が変わっていた。ビューから `instance.save()` を直接呼んだ場合に
-検証が走らない経路が残っていた。
+定期実行ジョブが増え、ワーカーを複数ホストに分散する必要が出てきた。
+ADR-0003 で採用した django-q2 のスケジューラは単一プロセス前提で、
+水平スケールするとジョブが重複して実行される。
 
 ## 決定
 
-Model は `clean()` / `full_clean()` / `save()` / `delete()` を実装しない。
-検証は Form / Service / DB制約の3段階に分ける(詳細は Validation Rules)。
+非同期処理基盤に Celery + Redis を使う。タスクは `app/tasks/<model>.py` に置き、
+Service から `transaction.on_commit()` 経由で enqueue する。
 
 ## 却下した案
 
-- `save()` をオーバーライドして `full_clean()` を呼ぶ (ADR-0004 の方針)
-  → 書き込みの起点が Model 側にも残り、Service を経由しない経路を塞げない
-- signals (`pre_save`) で検証する
-  → 実行順序が暗黙になり、どの検証がいつ走るかがコードから追えない
-- Model の `clean()` にモデル間の整合性チェックを書く
-  → DBを参照する検証が Model に入り、Model が Selector/Service に依存する
+- django-q2 を使い続ける (ADR-0003 の方針)
+  → スケジューラが単一プロセス前提で、水平スケール時にジョブが重複する
+- RQ (Redis Queue) にする
+  → 再試行・レート制限・優先度つきキューを自前で実装することになる
+- クラウドのマネージドキュー (SQS 等) にする
+  → ローカル開発で別途エミュレータが要り、devcontainer だけで完結しなくなる
 
 ## 影響
 
-既存モデルの `clean()` の内容を Service の事前条件チェックへ移す。
-一意制約を `Meta.constraints` へ移す。
-影響を受けるファイル: `app/models/*.py`、`app/services/department.py`。
+`config/settings.py` に Celery 設定を追加。`app/tasks/` を新設。
+ローカルのコンテナ構成に redis を追加。`django-q2` 依存を削除。
 ```
 
 ```markdown
 <!-- docs/adr/README.md -->
 | No | タイトル | Status |
 |----|---------|--------|
-| 0004 | save() から full_clean() を呼ぶ | Superseded by ADR-0011 |
-| 0011 | Model にライフサイクルメソッドを実装しない | Accepted |
+| 0003 | 非同期処理基盤に django-q2 を採用 | Superseded by ADR-0009 |
+| 0009 | 非同期処理基盤を Celery + Redis にする | Accepted |
 ```
 
-このファイル側には、ADRの対象になった規約セクションの末尾に一行だけ書く。
+コピー先はこの決定に対応する規約をこのファイルに足し、そのセクション末尾に `経緯:` を書く。
 
 ```markdown
-### (対象の規約セクションのタイトル)
+<!-- コピー先がこのファイルに追加した規約セクション -->
+## 非同期処理 Rules
 
 ...
 
-経緯: ADR-0011
+経緯: ADR-0009
 ```
 
 例外箇所のコメントは、規約に違反して見えるコードにのみ書く。規約に従っている箇所には何も書かない。
 
 ```python
-# 移行期間中のため旧方式のまま。ADR-0011 の対象外(2026-12 までに services/ へ移す)
-def save(self, *args, **kwargs):
+# 移行期間中のため django-q2 のまま。ADR-0009 の対象外(2026-12 までに app/tasks/ へ移す)
+@background
+def send_daily_digest():
     ...
 ```
 
