@@ -1,12 +1,16 @@
-<form method="post" id="company-form">
+<form method="post" id="company-form" class="ds-form">
     {% csrf_token %}
     {% if form.non_field_errors %}
-    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+    <div class="ds-alert ds-alert--error"><span class="ds-alert-message">{{ form.non_field_errors }}</span></div>
     {% endif %}
-    <div class="form-field mb-3">
-        <label for="{{ form.name.id_for_label }}" class="form-label">会社名</label>
+    <div class="ds-field">
+        <label for="{{ form.name.id_for_label }}" class="ds-label">会社名</label>
         {{ form.name }}
-        <div class="text-danger small">{{ form.name.errors }}</div>
+        {% if form.name.errors %}
+        <div class="ds-field-error">{{ form.name.errors }}</div>
+        {% endif %}
     </div>
-    <button type="submit" id="company-form-submit" class="btn btn-primary">保存</button>
+    <div class="ds-form-actions">
+        <button type="submit" id="company-form-submit" class="ds-btn ds-btn-primary">保存</button>
+    </div>
 </form>

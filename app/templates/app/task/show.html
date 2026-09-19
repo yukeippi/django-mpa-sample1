@@ -3,45 +3,45 @@
 {% block title %}{{ task.title }}{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 id="task-title" class="mb-0">{{ task.title }}</h1>
-    <div>
-        <a href="{% url 'app:task_index' %}" class="btn btn-outline-secondary">一覧に戻る</a>
+<div class="ds-page-header">
+    <h1 id="task-title" class="ds-h1">{{ task.title }}</h1>
+    <div class="ds-actions">
+        <a href="{% url 'app:task_index' %}" class="ds-btn">一覧に戻る</a>
         {% if can_edit %}
-        <a href="{% url 'app:task_edit' task.pk %}" id="edit-task-link" class="btn btn-primary">編集</a>
+        <a href="{% url 'app:task_edit' task.pk %}" id="edit-task-link" class="ds-btn ds-btn-primary">編集</a>
         {% endif %}
         {% if can_delete %}
-        <a href="{% url 'app:task_delete' task.pk %}" id="delete-task-link" class="btn btn-danger">削除</a>
+        <a href="{% url 'app:task_delete' task.pk %}" id="delete-task-link" class="ds-btn ds-btn-danger">削除</a>
         {% endif %}
     </div>
 </div>
 
-<div class="task-detail card">
-    <div class="card-body">
-        <div class="task-field mb-3">
-            <label class="form-label fw-bold">説明:</label>
-            <p id="task-description">{{ task.description|default:"なし" }}</p>
+<div class="ds-card ds-card--flush ds-card--narrow">
+    <dl class="ds-detail">
+        <div class="ds-detail-item">
+            <dt class="ds-detail-label">説明</dt>
+            <dd class="ds-detail-value" id="task-description">{{ task.description|default:"なし" }}</dd>
         </div>
-        <div class="task-field mb-3">
-            <label class="form-label fw-bold">ステータス:</label>
-            <p id="task-status">{{ task.get_status_display }}</p>
+        <div class="ds-detail-item">
+            <dt class="ds-detail-label">ステータス</dt>
+            <dd class="ds-detail-value" id="task-status"><span class="ds-status{% if task.status == 'in_progress' %} ds-status--progress{% elif task.status == 'done' %} ds-status--done{% endif %}">{{ task.get_status_display }}</span></dd>
         </div>
-        <div class="task-field mb-3">
-            <label class="form-label fw-bold">優先度:</label>
-            <p id="task-priority">{{ task.priority }}</p>
+        <div class="ds-detail-item">
+            <dt class="ds-detail-label">優先度</dt>
+            <dd class="ds-detail-value" id="task-priority">{{ task.priority }}</dd>
         </div>
-        <div class="task-field mb-3">
-            <label class="form-label fw-bold">担当者:</label>
-            <p id="task-assigned">{{ task.assigned_to|default:"未割り当て" }}</p>
+        <div class="ds-detail-item">
+            <dt class="ds-detail-label">担当者</dt>
+            <dd class="ds-detail-value" id="task-assigned">{{ task.assigned_to|default:"未割り当て" }}</dd>
         </div>
-        <div class="task-field mb-3">
-            <label class="form-label fw-bold">作成者:</label>
-            <p id="task-created-by">{{ task.created_by|default:"不明" }}</p>
+        <div class="ds-detail-item">
+            <dt class="ds-detail-label">作成者</dt>
+            <dd class="ds-detail-value" id="task-created-by">{{ task.created_by|default:"不明" }}</dd>
         </div>
-        <div class="task-field mb-0">
-            <label class="form-label fw-bold">期限:</label>
-            <p id="task-due-date">{{ task.due_date|date:"Y-m-d"|default:"なし" }}</p>
+        <div class="ds-detail-item">
+            <dt class="ds-detail-label">期限</dt>
+            <dd class="ds-detail-value" id="task-due-date">{{ task.due_date|date:"Y-m-d"|default:"なし" }}</dd>
         </div>
-    </div>
+    </dl>
 </div>
 {% endblock %}

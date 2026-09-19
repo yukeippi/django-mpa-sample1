@@ -1,29 +1,33 @@
-{% extends 'layouts/default.html' %}
+{% extends 'layouts/auth.html' %}
 
 {% block title %}ログイン{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-4">
-        <h1 class="mb-4">ログイン</h1>
-        <form method="post" id="login-form">
-            {% csrf_token %}
-            {% if form.non_field_errors %}
-            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+<div class="ds-card">
+    <form method="post" id="login-form" class="ds-form">
+        {% csrf_token %}
+        <h1 class="ds-h1">ログイン</h1>
+        {% if form.non_field_errors %}
+        <div class="ds-alert ds-alert--error"><span class="ds-alert-message">{{ form.non_field_errors }}</span></div>
+        {% endif %}
+        <div class="ds-field">
+            <label for="{{ form.username.id_for_label }}" class="ds-label">社員番号</label>
+            <input type="text" name="username" class="ds-input" id="{{ form.username.id_for_label }}" required autofocus>
+            {% if form.username.errors %}
+            <div class="ds-field-error">{{ form.username.errors }}</div>
             {% endif %}
-            <div class="form-field mb-3">
-                <label for="{{ form.username.id_for_label }}" class="form-label">社員番号</label>
-                <input type="text" name="username" class="form-control" id="{{ form.username.id_for_label }}" required autofocus>
-                <div class="text-danger small">{{ form.username.errors }}</div>
-            </div>
-            <div class="form-field mb-3">
-                <label for="{{ form.password.id_for_label }}" class="form-label">パスワード</label>
-                <input type="password" name="password" class="form-control" id="{{ form.password.id_for_label }}" required>
-                <div class="text-danger small">{{ form.password.errors }}</div>
-            </div>
-            <input type="hidden" name="next" value="{{ request.GET.next }}">
-            <button type="submit" id="login-submit" class="btn btn-primary">ログイン</button>
-        </form>
-    </div>
+        </div>
+        <div class="ds-field">
+            <label for="{{ form.password.id_for_label }}" class="ds-label">パスワード</label>
+            <input type="password" name="password" class="ds-input" id="{{ form.password.id_for_label }}" required>
+            {% if form.password.errors %}
+            <div class="ds-field-error">{{ form.password.errors }}</div>
+            {% endif %}
+        </div>
+        <input type="hidden" name="next" value="{{ request.GET.next }}">
+        <div class="ds-form-actions">
+            <button type="submit" id="login-submit" class="ds-btn ds-btn-primary">ログイン</button>
+        </div>
+    </form>
 </div>
 {% endblock %}

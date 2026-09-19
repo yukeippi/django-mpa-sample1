@@ -1,0 +1,8 @@
+<header class="ds-topbar">
+    {% if user.is_authenticated %}
+    <div class="ds-user">
+        <span class="ds-avatar">{{ user.username|first|upper }}</span>
+        <span id="current-username">{{ user.username }}{% if user.is_staff %}(管理者){% endif %}</span>
+    </div>
+    {% endif %}
+</header>

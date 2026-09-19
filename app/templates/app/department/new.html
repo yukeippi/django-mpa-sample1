@@ -3,14 +3,12 @@
 {% block title %}部門新規作成{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">部門新規作成</h1>
-    <a href="{% url 'app:department_index' %}" class="btn btn-outline-secondary">一覧に戻る</a>
+<div class="ds-page-header">
+    <h1 class="ds-h1">部門新規作成</h1>
+    <a href="{% url 'app:department_index' %}" class="ds-btn">一覧に戻る</a>
 </div>
 
-<div class="card">
-    <div class="card-body">
-        {% include 'app/department/_form.html' %}
-    </div>
+<div class="ds-card ds-card--narrow">
+    {% include 'app/department/_form.html' %}
 </div>
 {% endblock %}

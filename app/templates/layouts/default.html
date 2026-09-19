@@ -5,17 +5,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}">
     <link rel="stylesheet" href="{% static 'app/common.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
-<body>
-    {% include 'common/_navbar.html' %}
-    <div class="container">
-        {% include 'common/_messages.html' %}
-        {% block content %}{% endblock %}
+<body class="ds-page">
+    {% block shell %}
+    <div class="ds-app">
+        {% include 'common/_sidebar.html' %}
+        <div class="ds-main">
+            {% include 'common/_topbar.html' %}
+            <main class="ds-content">
+                {% include 'common/_messages.html' %}
+                {% block content %}{% endblock %}
+            </main>
+        </div>
     </div>
-    <script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+    {% endblock %}
     <script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
     {% block extra_js %}{% endblock %}
 </body>

@@ -3,8 +3,12 @@
 {% block title %}権限がありません{% endblock %}
 
 {% block content %}
-<div class="alert alert-danger" id="permission-denied-message">
-    このタスクを操作する権限がありません。
+<div class="ds-stack">
+    <div class="ds-alert ds-alert--error" id="permission-denied-message">
+        <span class="ds-alert-message">このタスクを操作する権限がありません。</span>
+    </div>
+    <div class="ds-actions">
+        <a href="{% url 'app:task_index' %}" class="ds-btn">タスク一覧に戻る</a>
+    </div>
 </div>
-<a href="{% url 'app:task_index' %}" class="btn btn-outline-secondary">タスク一覧に戻る</a>
 {% endblock %}
