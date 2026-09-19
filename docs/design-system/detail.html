@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>資料作成</title>
+    <link rel="stylesheet" href="theme.css">
+</head>
+<!-- 詳細画面の見本。app/templates/app/<model>/show.html に相当する。theme.css の ds- クラスだけで構成する -->
+<body class="ds-page">
+    <nav class="ds-nav">
+        <div class="ds-nav-start">
+            <a class="ds-nav-brand" href="index.html">Task Manager</a>
+            <div class="ds-nav-links">
+                <a class="ds-nav-link" href="list.html" aria-current="page">タスク一覧</a>
+                <a class="ds-nav-link" href="#">社員一覧</a>
+                <a class="ds-nav-link" href="#">会社一覧</a>
+                <a class="ds-nav-link" href="#">部門一覧</a>
+                <a class="ds-nav-link" href="#">管理グループ一覧</a>
+            </div>
+        </div>
+        <div class="ds-nav-end">
+            <span class="ds-nav-user">yamada(管理者)</span>
+            <button type="button" class="ds-btn ds-btn-secondary ds-btn-sm">ログアウト</button>
+        </div>
+    </nav>
+
+    <div class="ds-container">
+        <!-- アクションは secondary → primary → danger の順 -->
+        <div class="ds-page-header">
+            <h1 class="ds-h1">資料作成</h1>
+            <div class="ds-actions">
+                <a href="list.html" class="ds-btn ds-btn-secondary">一覧に戻る</a>
+                <a href="form.html" class="ds-btn ds-btn-primary">編集</a>
+                <a href="#" class="ds-btn ds-btn-danger">削除</a>
+            </div>
+        </div>
+
+        <!-- 項目名は dt(コロンなし)、値は dd。値が空のときは「なし」「未割り当て」など -->
+        <dl class="ds-detail">
+            <div class="ds-detail-item">
+                <dt class="ds-detail-label">説明</dt>
+                <dd class="ds-detail-value">四半期報告書の作成 #123</dd>
+            </div>
+            <div class="ds-detail-item">
+                <dt class="ds-detail-label">ステータス</dt>
+                <dd class="ds-detail-value"><span class="ds-status">To Do</span></dd>
+            </div>
+            <div class="ds-detail-item">
+                <dt class="ds-detail-label">優先度</dt>
+                <dd class="ds-detail-value">3</dd>
+            </div>
+            <div class="ds-detail-item">
+                <dt class="ds-detail-label">担当者</dt>
+                <dd class="ds-detail-value">未割り当て</dd>
+            </div>
+            <div class="ds-detail-item">
+                <dt class="ds-detail-label">作成者</dt>
+                <dd class="ds-detail-value">yamada</dd>
+            </div>
+            <div class="ds-detail-item">
+                <dt class="ds-detail-label">期限</dt>
+                <dd class="ds-detail-value">なし</dd>
+            </div>
+        </dl>
+    </div>
+</body>
+</html>

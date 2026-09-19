@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>タスク一覧</title>
+    <link rel="stylesheet" href="theme.css">
+</head>
+<!-- 一覧画面の見本。app/templates/app/<model>/index.html に相当する。theme.css の ds- クラスだけで構成する -->
+<body class="ds-page">
+    <nav class="ds-nav">
+        <div class="ds-nav-start">
+            <a class="ds-nav-brand" href="index.html">Task Manager</a>
+            <div class="ds-nav-links">
+                <a class="ds-nav-link" href="list.html" aria-current="page">タスク一覧</a>
+                <a class="ds-nav-link" href="#">社員一覧</a>
+                <a class="ds-nav-link" href="#">会社一覧</a>
+                <a class="ds-nav-link" href="#">部門一覧</a>
+                <a class="ds-nav-link" href="#">管理グループ一覧</a>
+            </div>
+        </div>
+        <div class="ds-nav-end">
+            <span class="ds-nav-user">yamada(管理者)</span>
+            <button type="button" class="ds-btn ds-btn-secondary ds-btn-sm">ログアウト</button>
+        </div>
+    </nav>
+
+    <div class="ds-container">
+        <!-- フラッシュメッセージ(messages.success) -->
+        <div class="ds-messages">
+            <div class="ds-alert ds-alert--success" role="alert">
+                <span class="ds-alert-message">タスクを作成しました。</span>
+                <button type="button" class="ds-alert-close" aria-label="閉じる" onclick="this.closest('.ds-alert').remove()"></button>
+            </div>
+        </div>
+
+        <!-- ページヘッダー: 左にh1、右にアクション(secondary → primary) -->
+        <div class="ds-page-header">
+            <h1 class="ds-h1">タスク一覧</h1>
+            <div class="ds-actions">
+                <a href="index.html" class="ds-btn ds-btn-secondary">ホームに戻る</a>
+                <a href="form.html" class="ds-btn ds-btn-primary">新規作成</a>
+            </div>
+        </div>
+
+        <!-- 0件のとき: <div class="ds-empty">タスクがありません。</div> -->
+        <div class="ds-table-wrap">
+            <table class="ds-table">
+                <thead>
+                    <tr>
+                        <th>タイトル</th>
+                        <th>ステータス</th>
+                        <th>優先度</th>
+                        <th>作成日時</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-href="detail.html">
+                        <td>資料作成</td>
+                        <td><span class="ds-status">To Do</span></td>
+                        <td class="ds-muted">3</td>
+                        <td class="ds-muted">2026-09-01 10:00</td>
+                    </tr>
+                    <tr data-href="detail.html">
+                        <td>レビュー対応</td>
+                        <td><span class="ds-status ds-status--progress">In Progress</span></td>
+                        <td class="ds-muted">2</td>
+                        <td class="ds-muted">2026-09-03 14:30</td>
+                    </tr>
+                    <tr data-href="detail.html">
+                        <td>リリース準備</td>
+                        <td><span class="ds-status ds-status--done">Done</span></td>
+                        <td class="ds-muted">1</td>
+                        <td class="ds-muted">2026-09-05 09:15</td>
+                    </tr>
+                    <tr data-href="detail.html">
+                        <td>#123 対応</td>
+                        <td><span class="ds-status">To Do</span></td>
+                        <td class="ds-muted">4</td>
+                        <td class="ds-muted">2026-09-08 11:20</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('tr[data-href]').forEach(function (row) {
+            row.addEventListener('click', function () { window.location.href = row.dataset.href; });
+        });
+    </script>
+</body>
+</html>

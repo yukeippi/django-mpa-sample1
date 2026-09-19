@@ -4,8 +4,32 @@ Task Manager 管理画面(タスク・社員・会社・部門・管理グルー
 罫線と余白で情報を整理し、色は最小限に抑える。新しい画面・コンポーネントは、ここに定義したトークンとパターンだけで組み立てること。
 
 - 視覚的なリファレンス(実物の見た目・検討案含む): https://claude.ai/artifact/Uif1FsLkyu4ofxNUpCdtP8
-- **実装状況**: 未反映。現行のテンプレート/CSSは Bootstrap 5.3.3 の既定スタイルのまま。本ドキュメントは移行後の目標仕様。
-  移行時は `--ds-*` 変数を `app/static/app/common.css` に定義し、Bootstrap のクラス(`.btn-primary` 等)の見た目を本仕様に上書きする方針(テンプレートのクラス名は極力変えない)。
+- **実装状況**: アプリ本体には未反映。現行のテンプレート/CSSは Bootstrap 5.3.3 の既定スタイルのまま。本ドキュメントは移行後の目標仕様。
+
+## 「このデザインで」と指示されたら(AIエージェント向け)
+
+**実際のCSSとHTMLの見本を正とし、本ドキュメントは値・ルールの補足として使う。** 見た目に迷ったら、まず見本を開く。
+
+| ファイル | 内容 |
+|---|---|
+| [`design-system/theme.css`](design-system/theme.css) | 全トークン(`--ds-*`)と全コンポーネントのクラス(`ds-*`)の実装。**クラス名・値はここが唯一の正** |
+| [`design-system/index.html`](design-system/index.html) | トップページの見本 |
+| [`design-system/list.html`](design-system/list.html) | 一覧画面の見本(フラッシュメッセージ・ページヘッダー・テーブル・ステータス表示・空状態) |
+| [`design-system/detail.html`](design-system/detail.html) | 詳細画面の見本(アクション3種・項目リスト) |
+| [`design-system/form.html`](design-system/form.html) | フォーム画面の見本(入力・エラー表示・送信ボタン) |
+
+ルール:
+
+1. 新しい画面は、見本のマークアップと `theme.css` の `ds-*` クラスだけで組み立てる。Bootstrapのクラスや独自のインラインスタイル、新しい色・影・角丸は足さない。
+2. 画面の種類(一覧/詳細/フォーム/トップ)に対応する見本を選び、そのHTML構造をそのままテンプレートに写す(Djangoのテンプレートタグは見本の文言・値の部分だけに使う)。
+3. 見本にないパターンが必要なときは、勝手に作らずユーザーに確認する。承認されたら `theme.css` と見本HTMLに追加してから使う。
+4. 見本はブラウザで直接開ける(`design-system/list.html` などをダブルクリック)。
+
+主なクラス: `ds-page`(body) / `ds-nav*` / `ds-container` / `ds-page-header` / `ds-actions` / `ds-h1` / `ds-display` / `ds-btn` + `ds-btn-primary|secondary|danger` (+ `ds-btn-sm`) / `ds-status` (+ `--progress|--done`) / `ds-alert` + `--success|--error` / `ds-empty` / `ds-form` `ds-field` `ds-label` `ds-input` (+ `--error`) `ds-field-error` / `ds-table-wrap` `ds-table` / `ds-detail*`
+
+## アプリ本体への反映方針(未着手)
+
+`theme.css` を `app/static/app/` に取り込み、`layouts/default.html` から読み込んで、各テンプレートのBootstrapクラスを `ds-*` に置き換える。置き換え対象は `app/templates/` 配下(navbar・messages・各モデルの index/show/_form)と、`app/forms/*.py` のウィジェットの `class` 属性(`form-control` / `form-select` → `ds-input`)。
 
 ## 原則
 

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager</title>
+    <link rel="stylesheet" href="theme.css">
+</head>
+<!-- トップページの見本。app/templates/app/index.html に相当する。塗りつぶしのヒーロー面は使わず、大きな見出しと余白だけで見せる -->
+<body class="ds-page">
+    <nav class="ds-nav">
+        <div class="ds-nav-start">
+            <a class="ds-nav-brand" href="index.html">Task Manager</a>
+            <div class="ds-nav-links">
+                <a class="ds-nav-link" href="list.html">タスク一覧</a>
+                <a class="ds-nav-link" href="#">社員一覧</a>
+                <a class="ds-nav-link" href="#">会社一覧</a>
+                <a class="ds-nav-link" href="#">部門一覧</a>
+                <a class="ds-nav-link" href="#">管理グループ一覧</a>
+            </div>
+        </div>
+        <div class="ds-nav-end">
+            <span class="ds-nav-user">yamada(管理者)</span>
+            <button type="button" class="ds-btn ds-btn-secondary ds-btn-sm">ログアウト</button>
+        </div>
+    </nav>
+
+    <div class="ds-container">
+        <div class="ds-hero">
+            <h1 class="ds-display">Task Manager</h1>
+            <p class="ds-lead">タスク管理アプリケーションへようこそ</p>
+            <div class="ds-actions">
+                <a href="list.html" class="ds-btn ds-btn-primary">タスク一覧</a>
+                <a href="#" class="ds-btn ds-btn-secondary">管理画面</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
