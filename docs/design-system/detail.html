@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>資料作成</title>
+    <link rel="stylesheet" href="theme.css">
+</head>
+<!-- 詳細画面の見本。app/templates/app/<model>/show.html に相当する。 theme.css の ds- クラスだけで構成する -->
+<body class="ds-page">
+    <div class="ds-app">
+        <aside class="ds-sidebar">
+            <a class="ds-brand" href="index.html"><span class="ds-brand-mark"><span class="ds-icon ds-icon--check"></span></span>Task Manager</a>
+            <div class="ds-nav-label">メニュー</div>
+            <nav class="ds-nav">
+                <a class="ds-nav-item" href="index.html"><span class="ds-icon ds-icon--home"></span>ホーム</a>
+                <a class="ds-nav-item" href="list.html" aria-current="page"><span class="ds-icon ds-icon--tasks"></span>タスク一覧</a>
+                <a class="ds-nav-item" href="#"><span class="ds-icon ds-icon--users"></span>社員一覧</a>
+                <a class="ds-nav-item" href="#"><span class="ds-icon ds-icon--building"></span>会社一覧</a>
+                <a class="ds-nav-item" href="#"><span class="ds-icon ds-icon--sitemap"></span>部門一覧</a>
+                <a class="ds-nav-item" href="#"><span class="ds-icon ds-icon--shield"></span>管理グループ一覧</a>
+            </nav>
+            <!-- ログアウトは POST フォームの button。見た目は ds-nav-item を button に適用する -->
+            <form class="ds-sidebar-footer" method="post" action="#">
+                <button type="submit" class="ds-nav-item"><span class="ds-icon ds-icon--logout"></span>ログアウト</button>
+            </form>
+        </aside>
+
+        <div class="ds-main">
+            <header class="ds-topbar">
+                <div class="ds-user"><span class="ds-avatar">Y</span>yamada(管理者)</div>
+            </header>
+
+            <main class="ds-content">
+                <!-- アクションは secondary → primary → danger の順 -->
+                <div class="ds-page-header">
+                    <h1 class="ds-h1">資料作成</h1>
+                    <div class="ds-actions">
+                        <a href="list.html" class="ds-btn">一覧に戻る</a>
+                        <a href="form.html" class="ds-btn ds-btn-primary">編集</a>
+                        <a href="#" class="ds-btn ds-btn-danger">削除</a>
+                    </div>
+                </div>
+
+                <!-- 項目名は dt(コロンなし)、値は dd。値が空のときは「なし」「未割り当て」など -->
+                <div class="ds-card ds-card--flush ds-card--narrow">
+                    <dl class="ds-detail">
+                        <div class="ds-detail-item">
+                            <dt class="ds-detail-label">説明</dt>
+                            <dd class="ds-detail-value">四半期報告書の作成 #123</dd>
+                        </div>
+                        <div class="ds-detail-item">
+                            <dt class="ds-detail-label">ステータス</dt>
+                            <dd class="ds-detail-value"><span class="ds-status">To Do</span></dd>
+                        </div>
+                        <div class="ds-detail-item">
+                            <dt class="ds-detail-label">優先度</dt>
+                            <dd class="ds-detail-value">3</dd>
+                        </div>
+                        <div class="ds-detail-item">
+                            <dt class="ds-detail-label">担当者</dt>
+                            <dd class="ds-detail-value">未割り当て</dd>
+                        </div>
+                        <div class="ds-detail-item">
+                            <dt class="ds-detail-label">作成者</dt>
+                            <dd class="ds-detail-value">yamada</dd>
+                        </div>
+                        <div class="ds-detail-item">
+                            <dt class="ds-detail-label">期限</dt>
+                            <dd class="ds-detail-value">なし</dd>
+                        </div>
+                    </dl>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>

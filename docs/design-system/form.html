@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>タスクの新規作成</title>
+    <link rel="stylesheet" href="theme.css">
+</head>
+<!-- フォーム画面の見本(入力エラー表示つき)。app/templates/app/<model>/_form.html に相当する。 theme.css の ds- クラスだけで構成する -->
+<body class="ds-page">
+    <div class="ds-app">
+        <aside class="ds-sidebar">
+            <a class="ds-brand" href="index.html"><span class="ds-brand-mark"><span class="ds-icon ds-icon--check"></span></span>Task Manager</a>
+            <div class="ds-nav-label">メニュー</div>
+            <nav class="ds-nav">
+                <a class="ds-nav-item" href="index.html"><span class="ds-icon ds-icon--home"></span>ホーム</a>
+                <a class="ds-nav-item" href="list.html" aria-current="page"><span class="ds-icon ds-icon--tasks"></span>タスク一覧</a>
+                <a class="ds-nav-item" href="#"><span class="ds-icon ds-icon--users"></span>社員一覧</a>
+                <a class="ds-nav-item" href="#"><span class="ds-icon ds-icon--building"></span>会社一覧</a>
+                <a class="ds-nav-item" href="#"><span class="ds-icon ds-icon--sitemap"></span>部門一覧</a>
+                <a class="ds-nav-item" href="#"><span class="ds-icon ds-icon--shield"></span>管理グループ一覧</a>
+            </nav>
+            <!-- ログアウトは POST フォームの button。見た目は ds-nav-item を button に適用する -->
+            <form class="ds-sidebar-footer" method="post" action="#">
+                <button type="submit" class="ds-nav-item"><span class="ds-icon ds-icon--logout"></span>ログアウト</button>
+            </form>
+        </aside>
+
+        <div class="ds-main">
+            <header class="ds-topbar">
+                <div class="ds-user"><span class="ds-avatar">Y</span>yamada(管理者)</div>
+            </header>
+
+            <main class="ds-content">
+                <div class="ds-page-header">
+                    <h1 class="ds-h1">タスクの新規作成</h1>
+                </div>
+
+                <!-- フォーム全体のエラー(form.non_field_errors)。閉じるボタンは付けない -->
+                <div class="ds-messages">
+                    <div class="ds-alert ds-alert--error" role="alert">
+                        <span class="ds-alert-message">入力内容を確認してください。</span>
+                    </div>
+                </div>
+
+                <!-- フォームは白いカードの中に置く。エラーは入力欄に ds-input--error、直下に ds-field-error -->
+                <div class="ds-card ds-card--narrow">
+                    <form class="ds-form" method="post" novalidate>
+                        <div class="ds-field">
+                            <label class="ds-label" for="title">タイトル</label>
+                            <input class="ds-input" type="text" id="title" value="資料作成">
+                        </div>
+                        <div class="ds-field">
+                            <label class="ds-label" for="description">説明</label>
+                            <textarea class="ds-input ds-input--error" id="description">四半期報告書の作成</textarea>
+                            <div class="ds-field-error">説明には関連するIssue番号(例: #123)を含めてください。</div>
+                        </div>
+                        <div class="ds-field">
+                            <label class="ds-label" for="status">ステータス</label>
+                            <select class="ds-input" id="status">
+                                <option>To Do</option>
+                                <option>In Progress</option>
+                                <option>Done</option>
+                            </select>
+                        </div>
+                        <div class="ds-field">
+                            <label class="ds-label" for="priority">優先度</label>
+                            <input class="ds-input" type="number" id="priority" min="1" max="5" value="3">
+                        </div>
+                        <div class="ds-field">
+                            <label class="ds-label" for="due_date">期限</label>
+                            <input class="ds-input" type="date" id="due_date">
+                        </div>
+                        <div class="ds-form-actions">
+                            <button type="submit" class="ds-btn ds-btn-primary">保存</button>
+                            <a href="list.html" class="ds-btn">キャンセル</a>
+                        </div>
+                    </form>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>

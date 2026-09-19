@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager</title>
+    <link rel="stylesheet" href="theme.css">
+</head>
+<!-- トップページ(ダッシュボード)の見本。app/templates/app/index.html に相当する。 theme.css の ds- クラスだけで構成する -->
+<body class="ds-page">
+    <div class="ds-app">
+        <aside class="ds-sidebar">
+            <a class="ds-brand" href="index.html"><span class="ds-brand-mark"><span class="ds-icon ds-icon--check"></span></span>Task Manager</a>
+            <div class="ds-nav-label">メニュー</div>
+            <nav class="ds-nav">
+                <a class="ds-nav-item" href="index.html" aria-current="page"><span class="ds-icon ds-icon--home"></span>ホーム</a>
+                <a class="ds-nav-item" href="list.html"><span class="ds-icon ds-icon--tasks"></span>タスク一覧</a>
+                <a class="ds-nav-item" href="#"><span class="ds-icon ds-icon--users"></span>社員一覧</a>
+                <a class="ds-nav-item" href="#"><span class="ds-icon ds-icon--building"></span>会社一覧</a>
+                <a class="ds-nav-item" href="#"><span class="ds-icon ds-icon--sitemap"></span>部門一覧</a>
+                <a class="ds-nav-item" href="#"><span class="ds-icon ds-icon--shield"></span>管理グループ一覧</a>
+            </nav>
+            <!-- ログアウトは POST フォームの button。見た目は ds-nav-item を button に適用する -->
+            <form class="ds-sidebar-footer" method="post" action="#">
+                <button type="submit" class="ds-nav-item"><span class="ds-icon ds-icon--logout"></span>ログアウト</button>
+            </form>
+        </aside>
+
+        <div class="ds-main">
+            <header class="ds-topbar">
+                <div class="ds-user"><span class="ds-avatar">Y</span>yamada(管理者)</div>
+            </header>
+
+            <main class="ds-content">
+                <div class="ds-page-header">
+                    <h1 class="ds-h1">Task Manager</h1>
+                </div>
+
+                <!-- カードを並べるダッシュボード構成。2カラムは ds-grid ds-grid--main-side(左が広い) -->
+                <div class="ds-grid ds-grid--main-side">
+                    <section class="ds-card ds-card--flush">
+                        <div class="ds-card-header">
+                            <h2 class="ds-card-title">最近のタスク</h2>
+                            <a href="list.html" class="ds-btn ds-btn-sm">すべて見る</a>
+                        </div>
+                        <table class="ds-table">
+                            <thead>
+                                <tr><th>タイトル</th><th>ステータス</th><th>作成日時</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr data-href="detail.html">
+                                    <td>資料作成</td>
+                                    <td><span class="ds-status">To Do</span></td>
+                                    <td class="ds-muted">2026-09-01 10:00</td>
+                                </tr>
+                                <tr data-href="detail.html">
+                                    <td>レビュー対応</td>
+                                    <td><span class="ds-status ds-status--progress">In Progress</span></td>
+                                    <td class="ds-muted">2026-09-03 14:30</td>
+                                </tr>
+                                <tr data-href="detail.html">
+                                    <td>リリース準備</td>
+                                    <td><span class="ds-status ds-status--done">Done</span></td>
+                                    <td class="ds-muted">2026-09-05 09:15</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </section>
+
+                    <section class="ds-card">
+                        <div class="ds-card-header">
+                            <h2 class="ds-card-title">ステータス別タスク</h2>
+                        </div>
+                        <!-- チャートの割合はデータで決まるため、conic-gradient だけはインラインで指定する -->
+                        <div class="ds-donut">
+                            <div class="ds-donut-chart" style="background: conic-gradient(var(--ds-chart-1) 0 50%, var(--ds-chart-2) 0 75%, var(--ds-chart-3) 0);"></div>
+                            <div class="ds-donut-center">
+                                <span class="ds-donut-label">タスク合計</span>
+                                <span class="ds-donut-value">4</span>
+                            </div>
+                        </div>
+                        <ul class="ds-legend">
+                            <li>To Do<span class="ds-legend-value">2</span></li>
+                            <li>In Progress<span class="ds-legend-value">1</span></li>
+                            <li>Done<span class="ds-legend-value">1</span></li>
+                        </ul>
+                    </section>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>
