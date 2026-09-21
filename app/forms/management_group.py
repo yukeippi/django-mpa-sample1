@@ -1,11 +1,4 @@
 from django import forms
-from app.errors.management_group import (
-    AdminGroupCannotHaveDepartmentError,
-    AdminGroupCannotHavePermissionSetError,
-    InvalidPermissionSetIdError,
-    NonAdminGroupRequiresDepartmentError,
-    NonAdminGroupRequiresPermissionSetError,
-)
 from app.models import ManagementGroup
 from app.permissions import rule_sets
 
@@ -35,13 +28,13 @@ class ManagementGroupForm(forms.ModelForm):
         permission_set_id = cleaned_data.get('permission_set_id')
 
         if is_admin and department is not None:
-            raise forms.ValidationError(AdminGroupCannotHaveDepartmentError().message)
+            raise forms.ValidationError('全社管理者グループには部門を設定できません。')
         if not is_admin and department is None:
-            raise forms.ValidationError(NonAdminGroupRequiresDepartmentError().message)
+            raise forms.ValidationError('全社管理者でない場合は部門の設定が必須です。')
         if is_admin and permission_set_id is not None:
-            raise forms.ValidationError(AdminGroupCannotHavePermissionSetError().message)
+            raise forms.ValidationError('全社管理者グループには権限セットを設定できません。')
         if not is_admin and permission_set_id is None:
-            raise forms.ValidationError(NonAdminGroupRequiresPermissionSetError().message)
+            raise forms.ValidationError('全社管理者でない場合は権限セットの設定が必須です。')
         if not is_admin and permission_set_id not in rule_sets.REGISTRY:
-            raise forms.ValidationError(InvalidPermissionSetIdError().message)
+            raise forms.ValidationError('存在しない権限セット番号です。')
         return cleaned_data

@@ -1,5 +1,4 @@
 from django import forms
-from app.errors.base import DomainError
 from app.models import Task
 from app.validators.task import validate_description_contains_issue_reference
 
@@ -23,10 +22,8 @@ class TaskForm(forms.ModelForm):
             'due_date': forms.DateInput(attrs={'class': 'ds-input', 'type': 'date'}),
         }
 
-    # 画面単位の形式チェック(Validation Rulesの第1段階)。ValidatorのDomainErrorを画面表示用に変換する
+    # 画面単位の形式チェック(Validation Rulesの第1段階)。ValidationErrorはDjangoがこのフィールドに割り当てる
     def clean_description(self):
         value = self.cleaned_data['description']
-        try:
-            return validate_description_contains_issue_reference(value)
-        except DomainError as error:
-            raise forms.ValidationError(error.message) from error
+        validate_description_contains_issue_reference(value)
+        return value
