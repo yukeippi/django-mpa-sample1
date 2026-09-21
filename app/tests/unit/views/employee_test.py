@@ -103,7 +103,7 @@ class TestEmployeeCreateView:
         })
 
         assert response.status_code == 200
-        assert 'この社員番号は既に使用されています。' in response.context['form'].non_field_errors()
+        assert 'この社員番号は既に使用されています。' in response.context['form'].errors['employee_number']
         assert Employee.objects.filter(employee_number='E0001').count() == 1
 
 
@@ -154,7 +154,7 @@ class TestEmployeeEditView:
 
         employee.refresh_from_db()
         assert response.status_code == 200
-        assert 'この社員番号は既に使用されています。' in response.context['form'].non_field_errors()
+        assert 'この社員番号は既に使用されています。' in response.context['form'].errors['employee_number']
         assert employee.employee_number == 'E0001'
 
 

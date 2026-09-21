@@ -89,7 +89,9 @@ def _create_task(request):
     form = TaskForm(request.POST)
     if not form.is_valid():
         return _render_new_form(request, form)
-    task = Task.objects.create(created_by=request.user, **form.cleaned_data)
+    task = form.save(commit=False)
+    task.created_by = request.user
+    task.save()
     messages.success(request, 'タスクを作成しました。')
     return redirect('app:task_show', pk=task.pk)
 
@@ -101,30 +103,17 @@ def _render_new_form(request, form):
 
 # 編集フォームを表示する
 def _display_edit_form(request, task):
-    form = TaskForm(initial=_task_initial(task))
+    form = TaskForm(instance=task)
     return _render_edit_form(request, task, form)
 
-
-# instanceの現在値からFormの初期値を組み立てる(ModelFormを使わないため明示的に行う)
-def _task_initial(task):
-    return {
-        'title': task.title,
-        'description': task.description,
-        'status': task.status,
-        'priority': task.priority,
-        'assigned_to': task.assigned_to,
-        'due_date': task.due_date,
-    }
 
 
 # タスクの更新処理を行う
 def _update_task(request, task):
-    form = TaskForm(request.POST)
+    form = TaskForm(request.POST, instance=task)
     if not form.is_valid():
         return _render_edit_form(request, task, form)
-    for field, value in form.cleaned_data.items():
-        setattr(task, field, value)
-    task.save(update_fields=[*form.cleaned_data.keys()])
+    form.save()
     messages.success(request, 'タスクを更新しました。')
     return redirect('app:task_show', pk=task.pk)
 

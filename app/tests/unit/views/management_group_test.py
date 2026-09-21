@@ -79,7 +79,7 @@ class TestManagementGroupCreateView:
         })
 
         assert response.status_code == 200
-        assert 'この管理グループ名は既に使用されています。' in response.context['form'].non_field_errors()
+        assert 'この管理グループ名は既に使用されています。' in response.context['form'].errors['name']
         assert ManagementGroup.objects.filter(name='開発チーム').count() == 1
 
     # 全社管理者に部門を指定するとエラーになることを確認
@@ -172,7 +172,7 @@ class TestManagementGroupEditView:
 
         group.refresh_from_db()
         assert response.status_code == 200
-        assert 'この管理グループ名は既に使用されています。' in response.context['form'].non_field_errors()
+        assert 'この管理グループ名は既に使用されています。' in response.context['form'].errors['name']
         assert group.name == '開発チーム'
 
 

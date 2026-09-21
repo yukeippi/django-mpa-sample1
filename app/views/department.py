@@ -4,8 +4,6 @@ from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from app.errors.base import DomainError
-from app.errors.department import DuplicateDepartmentNameError
 from app.forms import DepartmentForm
 from app.models import Department
 from app.permissions.access import can_create, can_delete, can_display_create_form, can_edit, can_view
@@ -87,16 +85,9 @@ def _create_department(request):
     form = DepartmentForm(request.POST)
     if not form.is_valid():
         return _render_new_form(request, form)
-    company = form.cleaned_data['company']
-    name = form.cleaned_data['name']
-    if not can_create(request.user, MODEL_NAME, Department(company=company, name=name)):
+    if not can_create(request.user, MODEL_NAME, form.instance):
         raise PermissionDenied
-    try:
-        _validate_unique_name(company=company, name=name, exclude_pk=None)
-    except DomainError as error:
-        form.add_error(None, error.message)
-        return _render_new_form(request, form)
-    department = Department.objects.create(company=company, name=name)
+    department = form.save()
     messages.success(request, '部門を作成しました。')
     return redirect('app:department_show', pk=department.pk)
 
@@ -108,30 +99,17 @@ def _render_new_form(request, form):
 
 # 編集フォームを表示する
 def _display_edit_form(request, department):
-    form = DepartmentForm(initial=_department_initial(department))
+    form = DepartmentForm(instance=department)
     return _render_edit_form(request, department, form)
 
-
-# instanceの現在値からFormの初期値を組み立てる(ModelFormを使わないため明示的に行う)
-def _department_initial(department):
-    return {'company': department.company, 'name': department.name}
 
 
 # 部門の更新処理を行う
 def _update_department(request, department):
-    form = DepartmentForm(request.POST)
+    form = DepartmentForm(request.POST, instance=department)
     if not form.is_valid():
         return _render_edit_form(request, department, form)
-    company = form.cleaned_data['company']
-    name = form.cleaned_data['name']
-    try:
-        _validate_unique_name(company=company, name=name, exclude_pk=department.pk)
-    except DomainError as error:
-        form.add_error(None, error.message)
-        return _render_edit_form(request, department, form)
-    department.company = company
-    department.name = name
-    department.save(update_fields=['company', 'name'])
+    form.save()
     messages.success(request, '部門情報を更新しました。')
     return redirect('app:department_show', pk=department.pk)
 
@@ -140,8 +118,3 @@ def _update_department(request, department):
 def _render_edit_form(request, department, form):
     return render(request, 'app/department/edit.html', {'form': form, 'department': department})
 
-
-# 同じ会社内での部門名の重複を検証する(DjangoのValidationErrorを介さずDomainErrorを直接送出する)
-def _validate_unique_name(*, company, name: str, exclude_pk: int | None) -> None:
-    if Department.objects.duplicate_of(company=company, name=name, exclude_pk=exclude_pk).exists():
-        raise DuplicateDepartmentNameError()

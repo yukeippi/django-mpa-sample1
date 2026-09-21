@@ -6,8 +6,6 @@ from django.core.paginator import Paginator
 from django.db import transaction
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from app.errors.base import DomainError
-from app.errors.employee import DuplicateEmployeeNumberError
 from app.forms import EmployeeForm
 from app.models import Employee
 from app.permissions.access import can_create, can_delete, can_display_create_form, can_edit, can_view
@@ -89,14 +87,9 @@ def _create_employee(request):
     form = EmployeeForm(request.POST, is_new=True)
     if not form.is_valid():
         return _render_new_form(request, form)
-    candidate = Employee(employee_number=form.cleaned_data['employee_number'])
-    if not can_create(request.user, MODEL_NAME, candidate):
+    if not can_create(request.user, MODEL_NAME, form.instance):
         raise PermissionDenied
-    try:
-        employee = _save_new_employee(form=form)
-    except DomainError as error:
-        form.add_error(None, error.message)
-        return _render_new_form(request, form)
+    employee = _save_new_employee(form=form)
     messages.success(request, '社員を登録しました。')
     return redirect('app:employee_show', pk=employee.pk)
 
@@ -108,29 +101,17 @@ def _render_new_form(request, form):
 
 # 編集フォームを表示する
 def _display_edit_form(request, employee):
-    form = EmployeeForm(initial=_employee_initial(employee))
+    form = EmployeeForm(instance=employee)
     return _render_edit_form(request, employee, form)
 
-
-# instanceの現在値からFormの初期値を組み立てる(ModelFormを使わないため明示的に行う)
-def _employee_initial(employee):
-    return {
-        'employee_number': employee.employee_number,
-        'last_name': employee.user.last_name,
-        'first_name': employee.user.first_name,
-    }
 
 
 # 社員の更新処理を行う
 def _update_employee(request, employee):
-    form = EmployeeForm(request.POST)
+    form = EmployeeForm(request.POST, instance=employee)
     if not form.is_valid():
         return _render_edit_form(request, employee, form)
-    try:
-        _save_employee_changes(employee=employee, form=form)
-    except DomainError as error:
-        form.add_error(None, error.message)
-        return _render_edit_form(request, employee, form)
+    _save_employee_changes(form=form)
     messages.success(request, '社員情報を更新しました。')
     return redirect('app:employee_show', pk=employee.pk)
 
@@ -143,26 +124,22 @@ def _render_edit_form(request, employee, form):
 # UserとEmployeeを同時に作成する
 @transaction.atomic
 def _save_new_employee(*, form: EmployeeForm) -> Employee:
-    employee_number = form.cleaned_data['employee_number']
-    _validate_unique_employee_number(employee_number=employee_number, exclude_pk=None)
-
     user = User.objects.create_user(
-        username=employee_number,
+        username=form.cleaned_data['employee_number'],
         first_name=form.cleaned_data['first_name'],
         last_name=form.cleaned_data['last_name'],
         password=form.cleaned_data['password'],
     )
-    return Employee.objects.create(user=user, employee_number=employee_number)
+    employee = form.save(commit=False)
+    employee.user = user
+    employee.save()
+    return employee
 
 
 # 社員情報を更新する(パスワードは入力があった場合のみ変更)
 @transaction.atomic
-def _save_employee_changes(*, employee: Employee, form: EmployeeForm) -> Employee:
-    employee_number = form.cleaned_data['employee_number']
-    _validate_unique_employee_number(employee_number=employee_number, exclude_pk=employee.pk)
-
-    employee.employee_number = employee_number
-    employee.save(update_fields=['employee_number'])
+def _save_employee_changes(*, form: EmployeeForm) -> Employee:
+    employee = form.save()
 
     user = employee.user
     user.first_name = form.cleaned_data['first_name']
@@ -178,11 +155,3 @@ def _save_employee_changes(*, employee: Employee, form: EmployeeForm) -> Employe
 def _delete_employee(*, employee: Employee) -> None:
     employee.user.delete()
 
-
-# 社員番号の重複を検証する(DjangoのValidationErrorを介さずDomainErrorを直接送出する)
-def _validate_unique_employee_number(*, employee_number: str, exclude_pk: int | None) -> None:
-    duplicates = Employee.objects.filter(employee_number=employee_number)
-    if exclude_pk is not None:
-        duplicates = duplicates.exclude(pk=exclude_pk)
-    if duplicates.exists():
-        raise DuplicateEmployeeNumberError()
