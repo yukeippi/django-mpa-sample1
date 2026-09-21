@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from django.contrib.auth.models import User
 
 
@@ -55,3 +56,13 @@ class Task(models.Model):
 
     def __str__(self):
         return self.title
+
+    # 期限を過ぎているかチェック
+    def is_overdue(self) -> bool:
+        if not self.due_date:
+            return False
+        return self.due_date < timezone.now().date() and self.status != 'done'
+
+    # 完了可能かチェック
+    def can_be_completed(self) -> bool:
+        return self.status in ['todo', 'in_progress']
