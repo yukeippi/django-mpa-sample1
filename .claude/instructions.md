@@ -13,7 +13,8 @@
 4. **ビュー** — View Naming Rules / View Method-Branch Rules / Read Rules / View Write Rules / Service Rules
 5. **テンプレートとCSS** — Layout Rules / Template Directory Rules / Template Rules / Partial Template Rules / CSS Rules
 6. **Pythonコードの書き方** — Control Flow Rules / Function Signature Rules / Inheritance Rules / Comment Rules
-7. **意思決定の記録** — ADR Rules
+7. **テスト** — Test-First Rules / Test Specification Rules / Test Layer Rules / Test Double Rules
+8. **意思決定の記録** — ADR Rules
 
 ## 全体構成
 
@@ -1015,6 +1016,213 @@ class Task(models.Model):
     # 期限を過ぎているかチェック
     def is_overdue(self):
         ...
+```
+
+## テスト
+
+### Test-First Rules
+
+テストコードは「実装が正しく動いたことの記録」ではなく、**その機能の仕様書**として書く。レビュー時にテストだけを読めば、その機能が何を保証しているのかが分かる状態を目標にする。
+
+この性質は書く順番に強く依存する。実装を先に書くと、テストはその実装の分岐をなぞったものになり、仕様ではなく実装構造の写しになる。そのため実装より先にテストを書く。
+
+#### 手順
+
+1. **仕様を箇条書きにする** — 実装対象の業務ルールを「どんな条件のとき何が起きるか」の形で列挙し、人に提示して確認を取る。**この段階を省略しない。** 省略するとテストの導出元が「これから書く実装の分岐」になり、テストを先に書いても実装をなぞるだけのテストになる
+2. **箇条書きの1項目 = 1テストとして、テストだけを書く** — この時点では実装を書かない
+3. **実行して失敗することを確認する** — 失敗したという事実とエラー出力を報告に含める。期待どおりのassertionで落ちているか(import失敗や構文エラーで落ちていないか)まで確認する
+4. **テストを通す最小の実装を書く** — 箇条書きに無い機能を先回りして実装しない
+5. **テストを変えずにリファクタする** — 規約(Control Flow Rules/Function Signature Rules等)に沿った形に整える
+
+#### 禁止事項
+
+- **実装を書いてからテストを書かない**。実装を読んで書いたテストは、実装の誤りをそのまま期待値として固定してしまう
+- **テストを通すためにテストの方を書き換えない**。テストが落ちたときに直すのは実装。期待値の側が仕様と食い違っていると判断した場合は、黙って書き換えず、仕様の誤りとして人に報告してから直す
+- **手順3を飛ばさない**。一度も失敗を確認していないテストは、条件を満たさなくても通るテスト(何も検証していないテスト)である可能性がある
+- **仕様の箇条書きに無い分岐をテストで増やさない**。実装の都合で分岐が増えた場合は、それが仕様なのかを確認する
+
+#### 例外
+
+- **振る舞いを変えないリファクタリング**: 新しいテストを先に書く必要はない。既存のテストを一切変更せずに通ることで担保する
+- **バグ修正**: バグを再現する失敗テストを先に書いてから直す。再現テストが無い修正は、同じバグの再発を検出できない
+
+#### Example
+
+実装前に提示する仕様の箇条書き(例: あるモデルの「完了」操作)。
+
+```
+- 未完了のものを完了にできる
+- 完了すると完了日時が記録される
+- 完了すると履歴が1件作成される
+- 既に完了しているものは完了にできない(エラーメッセージを表示し、状態は変わらない)
+- 未完了の子レコードが残っている場合は完了にできない
+- 担当者以外は完了にできない(404)
+```
+
+この6項目がそのまま6つのテストになり、テストファイルの一覧がそのまま仕様の目次になる。
+
+### Test Specification Rules
+
+テストが仕様書として読めるために、個々のテストは以下の性質を満たす。
+
+- **テスト名を仕様の一文にする**: `test_<条件>_<期待結果>`の形にする。`test_complete`/`test_success`/`test_error`のような、何を保証しているのか分からない名前にしない。条件と結果が名前に出ていれば、テスト名を並べただけで仕様が読める
+- **各テストの上に、保証する仕様を1行のコメントで書く**(Comment Rules参照)。テスト名で表現しきれない前提・理由はここに書く
+- **1テスト1仕様**: 箇条書きの1項目に対応させる。1つのテストに複数のルールを詰め込まない。詰め込むと、落ちたときにどの仕様が壊れたのかが分からず、1つ目のassertで落ちて以降の仕様が検証されないまま終わる
+- **検証対象は外から観測できるものに限る**: レスポンスのステータスコード・リダイレクト先・context、DBの状態、送出された例外とその`code`、フォームの`errors`。内部のどの関数が呼ばれたかは検証しない(Test Double Rules参照)
+- **その仕様を決めている値はテスト本体に書く**: 結果を左右する条件(境界値、権限の有無、対象の現在状態)は、テスト関数の中に直接書く。共通fixtureに入れると、テストを読んでも前提が分からず仕様が追えなくなる。逆に、そのテストの成否に関係しない準備(ログイン用のユーザー作成など)はfixtureやヘルパーに寄せ、本文には本質だけを残す
+- **「できる」と同じだけ「できない」を書く**: 拒否される条件、境界値(ちょうど境界の値と、その1つ外側)を書く。正常系だけのテストは仕様の半分しか語っていない
+- **期待値はベタ書きする**: 本番コードの定数・関数・式から期待値を導出しない。本番側の式をテストにも書くと、その式が間違っているときに両方が同時に間違うため、検証として成立しない
+- **条件の違いをテストの差分として見せる**: 同じ操作で条件だけが異なるテストは、セットアップの書き方を揃え、変えている1箇所だけが違って見えるようにする。読み手はその差分を仕様の分岐として読む
+
+#### レビュー基準
+
+**テストコードだけを渡されて、実装を再現できるか。** 再現できないなら、仕様がテストに現れていない。「テストは全部通っているが、何が保証されているのか分からない」状態はレビューで差し戻す。
+
+#### Example
+
+```python
+# 避ける書き方
+@pytest.mark.django_db
+class TestTaskComplete:
+
+    # 何を保証しているのか名前から分からない。1テストに3つの仕様が混ざっている。
+    # さらに、完了できるかを決める「現在の状態」がfixture側にあり、テストを読んでも前提が分からない
+    def test_complete(self, auth_client, task):
+        response = auth_client.post(f'/tasks/{task.pk}/complete/')
+        assert response.status_code == 302
+        task.refresh_from_db()
+        assert task.status == Task.Status.COMPLETED
+        assert task.completed_at is not None
+        assert TaskHistory.objects.filter(task=task).count() == 1
+```
+
+```python
+# 良い書き方(条件と結果が名前に出ており、条件を決める値はテスト本体にある)
+@pytest.mark.django_db
+class TestTaskComplete:
+
+    # 未完了のタスクは完了にでき、詳細ページにリダイレクトされる
+    def test_complete_incomplete_task_marks_as_completed(self, auth_client, sample_user):
+        task = Task.objects.create(title='タスク', assignee=sample_user, status=Task.Status.IN_PROGRESS)
+
+        response = auth_client.post(f'/tasks/{task.pk}/complete/')
+
+        task.refresh_from_db()
+        assert response.status_code == 302
+        assert response.url == f'/tasks/{task.pk}/'
+        assert task.status == Task.Status.COMPLETED
+
+    # 完了時は完了日時が記録される
+    def test_complete_records_completed_at(self, auth_client, sample_user):
+        task = Task.objects.create(title='タスク', assignee=sample_user, status=Task.Status.IN_PROGRESS)
+
+        auth_client.post(f'/tasks/{task.pk}/complete/')
+
+        task.refresh_from_db()
+        assert task.completed_at is not None
+
+    # 完了済みのタスクは完了にできず、状態も変わらない
+    def test_complete_already_completed_task_is_rejected(self, auth_client, sample_user):
+        task = Task.objects.create(title='タスク', assignee=sample_user, status=Task.Status.COMPLETED)
+
+        response = auth_client.post(f'/tasks/{task.pk}/complete/', follow=True)
+
+        task.refresh_from_db()
+        assert 'このタスクは完了にできません。' in [str(message) for message in response.context['messages']]
+        assert task.status == Task.Status.COMPLETED
+
+    # 未完了の子タスクが残っている場合は完了にできない
+    def test_complete_with_incomplete_children_is_rejected(self, auth_client, sample_user):
+        task = Task.objects.create(title='親タスク', assignee=sample_user, status=Task.Status.IN_PROGRESS)
+        Task.objects.create(title='子タスク', parent=task, assignee=sample_user, status=Task.Status.IN_PROGRESS)
+
+        auth_client.post(f'/tasks/{task.pk}/complete/')
+
+        task.refresh_from_db()
+        assert task.status == Task.Status.IN_PROGRESS
+
+    # 担当者以外は完了にできない(存在を隠すため404)
+    def test_complete_by_non_assignee_returns_404(self, auth_client, sample_user):
+        other_user = User.objects.create_user(username='other')
+        task = Task.objects.create(title='タスク', assignee=other_user, status=Task.Status.IN_PROGRESS)
+
+        response = auth_client.post(f'/tasks/{task.pk}/complete/')
+
+        assert response.status_code == 404
+```
+
+### Test Layer Rules
+
+テストの置き場所はFile Structure Rulesに従う。**何をどの層で検証するかは、その仕様を決めている層に合わせる。** 同じ仕様を複数の層で重複して検証しない。重複すると、仕様を1つ変えたときに複数のテストが同時に落ち、どれが本体の仕様なのかが分からなくなる。
+
+- **models/**: フィールドのデフォルト値、`Meta.constraints`(DB制約が実際に効くこと)、カスタムQuerySetの絞り込み条件、自身の属性だけで判定する状態判定メソッド(Validation Rules/QuerySet Rules参照)
+- **validators/**: Pure Functionの正常系と、失敗時に送出される`ValidationError`の`code`(Validator Rules参照)
+- **forms/**: 画面の入力契約。`fields`に出している項目、妥当な入力が通ること、業務ルール違反の入力で`form.errors`に想定の文言が出ること。validatorの網羅はvalidators/で済んでいるため、ここでは「フォームに繋がっていること」を1ケース確認するに留める
+- **views/**: 1リクエストの結果として外から観測できること。ステータスコード、リダイレクト先、`response.context`の内容、DBの変化、`messages`、権限による403/404の切り分け(Read Rules/View Write Rules参照)
+- **lib/**: 入力に対する戻り値。DBやHTTPに依存しない純粋なロジックとして検証する
+- **e2e/**: 画面をまたぐ主要な導線を、ページ単位で1経路ずつ。実行が遅く壊れやすいため、ユニットテストで検証済みの分岐をE2Eで再検証しない
+
+#### Example
+
+「識別子の形式」という1つの仕様を、層をまたいで重複させない書き分け。
+
+```python
+# tests/unit/validators/employee_test.py — 形式の仕様はここで網羅する
+def test_validate_identifier_format_rejects_lowercase_prefix():
+    with pytest.raises(ValidationError) as error:
+        validate_identifier_format('e0001')
+    assert error.value.code == 'invalid_identifier_format'
+```
+
+```python
+# tests/unit/forms/employee_test.py — validatorが繋がっていることだけを1ケース確認する
+@pytest.mark.django_db
+def test_form_rejects_invalid_identifier_format():
+    form = EmployeeForm({'identifier': 'INVALID'})
+    assert not form.is_valid()
+    assert 'identifier' in form.errors
+```
+
+```python
+# tests/unit/views/employee_test.py — 形式違反のパターンは扱わない。
+# viewが保証するのは「検証に失敗したら作成されず、フォームが再表示される」こと
+@pytest.mark.django_db
+def test_create_with_invalid_input_does_not_create_record(auth_client):
+    response = auth_client.post('/employees/new/', {'identifier': 'INVALID'})
+
+    assert response.status_code == 200
+    assert not Employee.objects.exists()
+```
+
+### Test Double Rules
+
+**モック(`unittest.mock`/`monkeypatch`)は既定では使わない。** 実際のオブジェクトと実際のテスト用DBを使い、**操作の結果として残った状態**を検証する。
+
+「どの関数が何回呼ばれたか」を検証するテストは、実装の呼び出し構造をテストに焼き付ける。内部の関数を分割・統合しただけでテストが落ちるようになり、かつテストが語る内容が「仕様」ではなく「実装手順」になるため、目的と正面から衝突する。
+
+- **モックしてよいのは、テストから制御できない外部のみ**: 外部サービスへのHTTP通信、メール送信、課金、乱数。自分のコード(model/form/view/validator/lib)はモックしない
+- **DBはモックしない**: テスト用DBを使う(`pytest.mark.django_db`)。DBアクセスをモックすると、制約・絞り込み条件という仕様そのものが検証されなくなる
+- **時刻に依存する仕様は、モックより引数で渡す設計にする**: 書き込みヘルパーが基準時刻を引数で受け取れば、テストはただ値を渡すだけで済む(Function Signature Rules/View Write Rules参照)。設計上それができない場合に限り、時刻を固定するライブラリを使う
+- **`assert_called_once_with`を書きたくなったら設計を疑う**: 結果として観測できる状態が無いか探す。本当に観測点が無い場合(外部への通知など)に限り、モックで送信内容を検証する
+- **外部への通知は、送信されたこと自体を仕様として検証してよい**: ただし検証するのは宛先・内容といった外部との契約であり、内部のどの関数を経由したかではない
+
+#### Example
+
+```python
+# 避ける書き方(内部の呼び出し構造を検証しており、ヘルパーを分割しただけで落ちる)
+def test_complete_calls_history_creation(mocker, sample_user):
+    spy = mocker.patch('app.views.task._create_history')
+    _apply_completion(task=task, operator=sample_user)
+    spy.assert_called_once_with(task=task, operator=sample_user)
+
+
+# 良い書き方(結果として残る状態を検証する)
+def test_complete_creates_history_record(sample_user):
+    _apply_completion(task=task, operator=sample_user)
+
+    history = TaskHistory.objects.get(task=task)
+    assert history.action == 'completed'
+    assert history.operator == sample_user
 ```
 
 ## 意思決定の記録

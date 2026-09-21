@@ -111,7 +111,9 @@ mypy app common config
 
 ## 7. テスト方針
 
-pytest + pytest-django + Playwright(E2E)でテストを実装しています。詳細は [docs/testing.md](docs/testing.md) を参照してください。
+pytest + pytest-django + Playwright(E2E)でテストを実装しています。実行方法・フィクスチャ等は [docs/testing.md](docs/testing.md) を参照してください。
+
+テストコードの書き方(テストファーストの手順、テストを仕様書として読める状態に保つためのルール)は [.claude/instructions.md](.claude/instructions.md) の「テスト」章を参照してください。
 
 ## 8. ドメイン知識・業務ルール
 
