@@ -3,8 +3,8 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect, render
-from app import selectors, services
+from django.shortcuts import get_object_or_404, redirect, render
+from app import services
 from app.errors.base import DomainError
 from app.forms import EmployeeForm
 from app.models import Employee
@@ -18,7 +18,7 @@ MODEL_NAME = 'Employee'
 # メリット(DBへのLIMIT/OFFSET)が失われるため、その場合はDB側で絞り込む方式への変更を検討する
 @login_required
 def index(request: HttpRequest) -> HttpResponse:
-    employees_qs = selectors.employee.list_employees()
+    employees_qs = Employee.objects.with_user()
     employees = [employee for employee in employees_qs if can_view(request.user, MODEL_NAME, employee)]
     paginator = Paginator(employees, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -31,7 +31,7 @@ def index(request: HttpRequest) -> HttpResponse:
 # 社員詳細
 @login_required
 def show(request: HttpRequest, pk: int) -> HttpResponse:
-    employee = selectors.employee.get_employee(pk=pk)
+    employee = get_object_or_404(Employee, pk=pk)
     if not can_view(request.user, MODEL_NAME, employee):
         raise PermissionDenied
     return render(request, 'app/employee/show.html', {'employee': employee})
@@ -50,7 +50,7 @@ def new(request: HttpRequest) -> HttpResponse:
 # 社員編集
 @login_required
 def edit(request: HttpRequest, pk: int) -> HttpResponse:
-    employee = selectors.employee.get_employee(pk=pk)
+    employee = get_object_or_404(Employee, pk=pk)
     if not can_edit(request.user, MODEL_NAME, employee):
         raise PermissionDenied
     if request.method == 'POST':
@@ -61,7 +61,7 @@ def edit(request: HttpRequest, pk: int) -> HttpResponse:
 # 社員削除
 @login_required
 def delete(request: HttpRequest, pk: int) -> HttpResponse:
-    employee = selectors.employee.get_employee(pk=pk)
+    employee = get_object_or_404(Employee, pk=pk)
     if not can_delete(request.user, MODEL_NAME, employee):
         raise PermissionDenied
     if request.method == 'POST':

@@ -3,16 +3,17 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.shortcuts import redirect, render
-from app import selectors, services
+from django.shortcuts import get_object_or_404, redirect, render
+from app import services
 from app.forms import TaskForm
+from app.models import Task
 from app.permissions.roles import can_delete_task, can_edit_task
 
 
 # タスク一覧
 @login_required
 def index(request: HttpRequest) -> HttpResponse:
-    tasks_qs = selectors.task.list_tasks()
+    tasks_qs = Task.objects.all()
     paginator = Paginator(tasks_qs, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'app/task/index.html', {
@@ -24,7 +25,7 @@ def index(request: HttpRequest) -> HttpResponse:
 # タスク詳細
 @login_required
 def show(request: HttpRequest, pk: int) -> HttpResponse:
-    task = selectors.task.get_task(pk=pk)
+    task = get_object_or_404(Task, pk=pk)
     return render(request, 'app/task/show.html', {
         'task': task,
         'can_edit': can_edit_task(request.user, task),
@@ -43,7 +44,7 @@ def new(request: HttpRequest) -> HttpResponse:
 # タスク編集
 @login_required
 def edit(request: HttpRequest, pk: int) -> HttpResponse:
-    task = selectors.task.get_task(pk=pk)
+    task = get_object_or_404(Task, pk=pk)
     if not can_edit_task(request.user, task):
         raise PermissionDenied
     if request.method == 'POST':
@@ -54,7 +55,7 @@ def edit(request: HttpRequest, pk: int) -> HttpResponse:
 # タスク削除
 @login_required
 def delete(request: HttpRequest, pk: int) -> HttpResponse:
-    task = selectors.task.get_task(pk=pk)
+    task = get_object_or_404(Task, pk=pk)
     if not can_delete_task(request.user, task):
         raise PermissionDenied
     if request.method == 'POST':
@@ -68,7 +69,7 @@ def delete(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 def api(request: HttpRequest) -> HttpResponse:
     if request.method == 'GET':
-        tasks = selectors.task.list_tasks().values('id', 'title', 'status', 'priority')
+        tasks = Task.objects.all().values('id', 'title', 'status', 'priority')
         return JsonResponse(list(tasks), safe=False)
     return JsonResponse({'error': 'Method not allowed'}, status=405)
 

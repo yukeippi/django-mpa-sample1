@@ -3,10 +3,11 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect, render
-from app import selectors, services
+from django.shortcuts import get_object_or_404, redirect, render
+from app import services
 from app.errors.base import DomainError
 from app.forms import ManagementGroupForm
+from app.models import ManagementGroup
 from app.permissions.roles import is_admin
 
 
@@ -14,7 +15,7 @@ from app.permissions.roles import is_admin
 @login_required
 def index(request: HttpRequest) -> HttpResponse:
     _require_admin(request)
-    groups_qs = selectors.management_group.list_management_groups()
+    groups_qs = ManagementGroup.objects.all()
     paginator = Paginator(groups_qs, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'app/management_group/index.html', {
@@ -27,7 +28,7 @@ def index(request: HttpRequest) -> HttpResponse:
 @login_required
 def show(request: HttpRequest, pk: int) -> HttpResponse:
     _require_admin(request)
-    management_group = selectors.management_group.get_management_group(pk=pk)
+    management_group = get_object_or_404(ManagementGroup, pk=pk)
     return render(request, 'app/management_group/show.html', {'management_group': management_group})
 
 
@@ -44,7 +45,7 @@ def new(request: HttpRequest) -> HttpResponse:
 @login_required
 def edit(request: HttpRequest, pk: int) -> HttpResponse:
     _require_admin(request)
-    management_group = selectors.management_group.get_management_group(pk=pk)
+    management_group = get_object_or_404(ManagementGroup, pk=pk)
     if request.method == 'POST':
         return _update_management_group(request, management_group)
     return _display_edit_form(request, management_group)
@@ -54,7 +55,7 @@ def edit(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 def delete(request: HttpRequest, pk: int) -> HttpResponse:
     _require_admin(request)
-    management_group = selectors.management_group.get_management_group(pk=pk)
+    management_group = get_object_or_404(ManagementGroup, pk=pk)
     if request.method == 'POST':
         services.management_group.delete(management_group=management_group)
         messages.success(request, '管理グループを削除しました。')
