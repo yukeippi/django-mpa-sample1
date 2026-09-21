@@ -35,6 +35,10 @@ def can_display_create_form(user: User, model_name: str) -> bool:
     for group in get_applicable_management_groups(user):
         if group.is_admin:
             return True
+        if group.permission_set_id is None:
+            # DB制約(management_group_admin_consistency)により全社管理者以外は必ず持つが、
+            # 制約をすり抜けた場合は権限なしとして扱う(fail closed)
+            continue
         rule_set = rule_sets.REGISTRY[group.permission_set_id]
         rule = _find_rule(rule_set, model_name, 'record', 'create')
         if rule is not None and rule['effect'] == 'allow':

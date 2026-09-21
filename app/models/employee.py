@@ -1,6 +1,10 @@
-from typing import Self
+from typing import TYPE_CHECKING, Self
 from django.db import models
 from django.contrib.auth.models import User
+
+if TYPE_CHECKING:  # 文字列参照のフィールドを型注釈で解決するためだけのimport(実行時には読み込まない)
+    from app.models.department import Department
+    from app.models.employee_department import EmployeeDepartment
 
 
 class EmployeeQuerySet(models.QuerySet):
@@ -16,7 +20,7 @@ class Employee(models.Model):
     # ログインIDとして使用する社員番号
     employee_number = models.CharField(max_length=20, unique=True, verbose_name='社員番号')
     # 所属部門(主務/兼務の区別はEmployeeDepartment.is_primaryで持つ)
-    departments = models.ManyToManyField(
+    departments: models.ManyToManyField['Department', 'EmployeeDepartment'] = models.ManyToManyField(
         'Department', through='EmployeeDepartment', related_name='employees', blank=True, verbose_name='所属部門'
     )
 

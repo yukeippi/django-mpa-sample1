@@ -2,8 +2,9 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from app.lib.types import AuthenticatedHttpRequest
 from app.forms import TaskForm
 from app.models import Task
 from app.permissions.roles import can_delete_task, can_edit_task
@@ -11,7 +12,7 @@ from app.permissions.roles import can_delete_task, can_edit_task
 
 # タスク一覧
 @login_required
-def index(request: HttpRequest) -> HttpResponse:
+def index(request: AuthenticatedHttpRequest) -> HttpResponse:
     tasks_qs = Task.objects.all()
     paginator = Paginator(tasks_qs, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -23,7 +24,7 @@ def index(request: HttpRequest) -> HttpResponse:
 
 # タスク詳細
 @login_required
-def show(request: HttpRequest, pk: int) -> HttpResponse:
+def show(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
     task = get_object_or_404(Task, pk=pk)
     return render(request, 'app/task/show.html', {
         'task': task,
@@ -34,7 +35,7 @@ def show(request: HttpRequest, pk: int) -> HttpResponse:
 
 # タスク新規作成
 @login_required
-def new(request: HttpRequest) -> HttpResponse:
+def new(request: AuthenticatedHttpRequest) -> HttpResponse:
     if request.method == 'POST':
         return _create_task(request)
     return _display_new_form(request)
@@ -42,7 +43,7 @@ def new(request: HttpRequest) -> HttpResponse:
 
 # タスク編集
 @login_required
-def edit(request: HttpRequest, pk: int) -> HttpResponse:
+def edit(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
     task = get_object_or_404(Task, pk=pk)
     if not can_edit_task(request.user, task):
         raise PermissionDenied
@@ -53,7 +54,7 @@ def edit(request: HttpRequest, pk: int) -> HttpResponse:
 
 # タスク削除
 @login_required
-def delete(request: HttpRequest, pk: int) -> HttpResponse:
+def delete(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
     task = get_object_or_404(Task, pk=pk)
     if not can_delete_task(request.user, task):
         raise PermissionDenied
@@ -66,7 +67,7 @@ def delete(request: HttpRequest, pk: int) -> HttpResponse:
 
 # タスクAPI(E2Eテスト用)
 @login_required
-def api(request: HttpRequest) -> HttpResponse:
+def api(request: AuthenticatedHttpRequest) -> HttpResponse:
     if request.method == 'GET':
         tasks = Task.objects.all().values('id', 'title', 'status', 'priority')
         return JsonResponse(list(tasks), safe=False)

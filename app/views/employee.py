@@ -4,8 +4,9 @@ from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from app.lib.types import AuthenticatedHttpRequest
 from app.forms import EmployeeForm
 from app.models import Employee
 from app.permissions.access import can_create, can_delete, can_display_create_form, can_edit, can_view
@@ -17,7 +18,7 @@ MODEL_NAME = 'Employee'
 # 権限判定をPython側で行うため全件をメモリに展開してからフィルタする。件数が増えるとPaginatorの
 # メリット(DBへのLIMIT/OFFSET)が失われるため、その場合はDB側で絞り込む方式への変更を検討する
 @login_required
-def index(request: HttpRequest) -> HttpResponse:
+def index(request: AuthenticatedHttpRequest) -> HttpResponse:
     employees_qs = Employee.objects.with_user()
     employees = [employee for employee in employees_qs if can_view(request.user, MODEL_NAME, employee)]
     paginator = Paginator(employees, 10)
@@ -30,7 +31,7 @@ def index(request: HttpRequest) -> HttpResponse:
 
 # 社員詳細
 @login_required
-def show(request: HttpRequest, pk: int) -> HttpResponse:
+def show(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
     employee = get_object_or_404(Employee, pk=pk)
     if not can_view(request.user, MODEL_NAME, employee):
         raise PermissionDenied
@@ -39,7 +40,7 @@ def show(request: HttpRequest, pk: int) -> HttpResponse:
 
 # 社員新規作成
 @login_required
-def new(request: HttpRequest) -> HttpResponse:
+def new(request: AuthenticatedHttpRequest) -> HttpResponse:
     if not can_display_create_form(request.user, MODEL_NAME):
         raise PermissionDenied
     if request.method == 'POST':
@@ -49,7 +50,7 @@ def new(request: HttpRequest) -> HttpResponse:
 
 # 社員編集
 @login_required
-def edit(request: HttpRequest, pk: int) -> HttpResponse:
+def edit(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
     employee = get_object_or_404(Employee, pk=pk)
     if not can_edit(request.user, MODEL_NAME, employee):
         raise PermissionDenied
@@ -60,7 +61,7 @@ def edit(request: HttpRequest, pk: int) -> HttpResponse:
 
 # 社員削除
 @login_required
-def delete(request: HttpRequest, pk: int) -> HttpResponse:
+def delete(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
     employee = get_object_or_404(Employee, pk=pk)
     if not can_delete(request.user, MODEL_NAME, employee):
         raise PermissionDenied
