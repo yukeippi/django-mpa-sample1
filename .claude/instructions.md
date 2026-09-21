@@ -644,37 +644,64 @@ class EmployeeForm(forms.ModelForm):
 
 ## Inheritance Rules
 
-自作クラスから継承してよいのは、**フィールド・定数の宣言のみを持ち、メソッド実装を持たない基底クラス**に限る。振る舞いを共有したい場合は継承せず、モジュール関数への委譲で行う。
+共通の実装を共有したいときは、**まずMixinか関数を検討する**。自作の基底クラスを作ることは禁止しないが、既定の選択肢にはしない。
 
-継承は親の内部への全面的なアクセスを子に与える。子は親の公開インターフェースではなく、内部の属性・メソッドの呼び出し順序・不変条件に依存するため、親を書き直すと子がまとめて壊れる。つまり親も子も単独では捨てられなくなる。制御フローがファイルをまたいで暗黙になる点も問題で、これは差分を読んだだけでは見えない。
+継承は親の内部への全面的なアクセスを子に与える。子は親の公開インターフェースではなく、内部の属性・メソッドの呼び出し順序・不変条件に依存するため、親を書き直すと子がまとめて壊れる。つまり親も子も単独では捨てられなくなる。`BaseService`のような「とりあえずの基底クラス」は、最初は薄くても後から歪みやすい。
 
 ### 対象外
 
-- **フレームワークのクラスの継承**: `models.Model`、`forms.Form`、`models.QuerySet`、`BaseCommand`、`ModelBackend` などの継承は、フレームワークが用意した拡張点である。ここから外れるほうが読み手にとって予想外になるため、通常どおり継承する。
-- **例外クラスの階層**: `except` が型で判定するため、階層そのものが機能になっている。独自の例外を定義する必要が生じた場合、基底クラスから派生させるのは可。ただし例外クラスにもメソッド実装は持たせない。なお現状、業務エラーは`django.core.exceptions.ValidationError`に一本化しており、独自の例外階層は持たない(Validator Rules/Validation Rules参照)。
+- **フレームワークのクラスの継承**: `models.Model`、`forms.ModelForm`、`models.QuerySet`、`BaseCommand`、`ModelBackend`などの継承は、フレームワークが用意した拡張点である。ここから外れるほうが読み手にとって予想外になるため、通常どおり継承する
+- **Djangoの抽象モデル**: `abstract = True`の抽象モデルはフィールド(=状態)を持つ。下記のMixinの原則の例外になるが、Djangoにモデルのフィールドを共有する手段が他にないため、公式パターンとして割り切る
 
-### 禁止事項
+### 自作の基底クラスを作る場合
 
-- メソッド実装を持つ自作クラスを継承すること
-- 親が子のメソッドを呼ぶ構造(Template Method)
-- `super()` を挟んで処理を連鎖させる多重継承
+次を満たすときに限る。迷ったらMixinか関数にする。
 
-### mixinについて
+- **単体でインスタンス化して意味があるか、`is-a`の主軸として複数の具体クラスが派生する見通しがあること**。「共通処理の置き場が欲しい」だけの理由で作らない
+- **親が子のメソッドを呼ぶ構造(Template Method)にしない**。制御フローがファイルをまたいで暗黙になり、差分を読んだだけでは見えなくなる。子に実装を要求したくなったら、それは継承ではなく引数で渡す設計にできないか検討する
 
-Pythonのmixinは、構文上も意味上も継承である。MROに参加し、`self` をホストと共有し、ホストの属性を読み書きでき、単体ではインスタンス化できない。コンポジションとして扱うことはできない。
+### Mixinの条件
 
-したがってmixinも上記の原則に従う。**フィールドや定数を宣言するだけのmixinは可。`self` を読むメソッドを持たせた時点で不可**となる。
+Mixinは「宿主が持っている何かを前提に、機能だけを足す不完全な部品」である。単体でインスタンス化して意味を持たない。この不完全さを、次の形でコードに明示する。
+
+- **`__init__`を書かない**: MROの協調初期化(`super().__init__(**kwargs)`のリレー)に巻き込まれ、混ぜる順番で壊れる。**ここが「実質的な継承」に転落する一番の入口**
+- **他のMixinを継承しない**: Mixin同士を継承させた時点で、それは階層であり基底クラスである
+- **`isinstance(x, XxxMixin)`を書かない**: 型として使い始めた合図。Mixinは機能を足す部品であって型ではない
+- **宿主に要求するものをクラス冒頭に明示する**: 実体は定義せず、アノテーションとコメントだけを置く
+
+```python
+class SoftDeleteMixin:
+    is_deleted: bool  # 宿主が持つ前提。実体は定義しない
+
+    def soft_delete(self) -> None:
+        self.is_deleted = True
+```
+
+要求が増えてこの宣言が長くなってきたら、そのMixinは責務を持ちすぎている。分割するか、Mixinをやめて関数への委譲に変える。
+
+型で厳密に縛りたい場合は`typing.Protocol`を使って`self`の型注釈で要求を宣言する方法もあるが、必須としない。なお`@abstractmethod`による宣言は、`models.Model`と`ABCMeta`のメタクラスが衝突するためDjangoでは避ける。
 
 ### 命名
 
-宣言のみを持つ基底クラスは、役割によって名前の末尾を使い分ける。
+- **`XxxBase`**: そのクラスが`is-a`の主軸(本体)であることを示す。抽象基底クラスとして、そこから具体的なクラスが派生する
+- **`XxxMixin`**: 単体では完結しない、部品としての機能追加であることを示す。他のクラスと組み合わせて使う前提で、単体でインスタンス化されることは想定しない
 
-- **`XxxBase`**: そのクラスが「is-a」の主軸(本体)であることを示す。
-- **`XxxMixin`**: 単体では完結しない、部品としての宣言であることを示す。他のクラスと組み合わせて使う前提で、単体でインスタンス化されることは想定しない。
+### 並び順
+
+Mixinを左、フレームワーク由来のクラスを右端に置く。差分を見た瞬間に「右端が型、左側が機能」と読めるようにするため。
+
+```python
+class InvoiceUpdateView(AuditLogMixin, PermissionMixin, UpdateView):
+    ...
+```
+
+### レビューで見る3点
+
+- Mixinに`__init__`がないか
+- `isinstance(x, XxxMixin)`が書かれていないか
+- Mixinが別のMixinを継承していないか
 
 ### Example
-
-宣言のみを継承する場合。
 
 ```python
 # 「is-a」の主軸となる抽象モデル
@@ -697,8 +724,6 @@ class Task(TaskBase, TimestampMixin):
     ...
 ```
 
-振る舞いを共有する場合。継承ではなくserviceへ委譲する。
-
 ```python
 # NG: 親が子のメソッドを呼んでおり、制御フローがファイルをまたいで暗黙になる。
 #     publish()を書き直すと、それを継承する全モデルが影響を受ける
@@ -720,21 +745,21 @@ class Task(PublishableBase):
 ```
 
 ```python
-# OK: 宣言だけを継承し、振る舞いはserviceに置く
-class PublishableBase(models.Model):
+# OK: 宣言だけを抽象モデルに置き、振る舞いはviewの書き込みヘルパーに置く
+class PublishableMixin(models.Model):
     class Meta:
         abstract = True
 
     published_at = models.DateTimeField(null=True)
 
 
-class Task(PublishableBase):
+class Task(PublishableMixin):
     ...
 
 
-# services/task.py
+# app/views/task.py
 @transaction.atomic
-def publish(*, task: Task, published_at: datetime) -> Task:
+def _publish_task(*, task: Task, published_at: datetime) -> Task:
     _validate_publishable(task=task)
     task.published_at = published_at
     task.save(update_fields=['published_at'])
