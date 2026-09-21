@@ -642,14 +642,39 @@ class EmployeeForm(forms.ModelForm):
         return value
 ```
 
-## Mixin/Base Naming Rules
+## Inheritance Rules
 
-多重継承に使うクラスは、役割によって名前の末尾を使い分ける。
+自作クラスから継承してよいのは、**フィールド・定数の宣言のみを持ち、メソッド実装を持たない基底クラス**に限る。振る舞いを共有したい場合は継承せず、モジュール関数への委譲で行う。
 
-- **`XxxBase`**: そのクラスが「is-a」の主軸(本体)であることを示す。抽象基底クラスとして、そこから具体的なクラスが1本の系譜として派生していくイメージ。
-- **`XxxMixin`**: 単体では完結しない、部品としての機能追加であることを示す。他のクラスと組み合わせて使う前提で、単体でインスタンス化されることは想定しない。
+継承は親の内部への全面的なアクセスを子に与える。子は親の公開インターフェースではなく、内部の属性・メソッドの呼び出し順序・不変条件に依存するため、親を書き直すと子がまとめて壊れる。つまり親も子も単独では捨てられなくなる。制御フローがファイルをまたいで暗黙になる点も問題で、これは差分を読んだだけでは見えない。
+
+### 対象外
+
+- **フレームワークのクラスの継承**: `models.Model`、`forms.Form`、`models.QuerySet`、`BaseCommand`、`ModelBackend` などの継承は、フレームワークが用意した拡張点である。ここから外れるほうが読み手にとって予想外になるため、通常どおり継承する。
+- **例外クラスの階層**: `except` が型で判定するため、階層そのものが機能になっている。独自の例外を定義する必要が生じた場合、基底クラスから派生させるのは可。ただし例外クラスにもメソッド実装は持たせない。なお現状、業務エラーは`django.core.exceptions.ValidationError`に一本化しており、独自の例外階層は持たない(Validator Rules/Validation Rules参照)。
+
+### 禁止事項
+
+- メソッド実装を持つ自作クラスを継承すること
+- 親が子のメソッドを呼ぶ構造(Template Method)
+- `super()` を挟んで処理を連鎖させる多重継承
+
+### mixinについて
+
+Pythonのmixinは、構文上も意味上も継承である。MROに参加し、`self` をホストと共有し、ホストの属性を読み書きでき、単体ではインスタンス化できない。コンポジションとして扱うことはできない。
+
+したがってmixinも上記の原則に従う。**フィールドや定数を宣言するだけのmixinは可。`self` を読むメソッドを持たせた時点で不可**となる。
+
+### 命名
+
+宣言のみを持つ基底クラスは、役割によって名前の末尾を使い分ける。
+
+- **`XxxBase`**: そのクラスが「is-a」の主軸(本体)であることを示す。
+- **`XxxMixin`**: 単体では完結しない、部品としての宣言であることを示す。他のクラスと組み合わせて使う前提で、単体でインスタンス化されることは想定しない。
 
 ### Example
+
+宣言のみを継承する場合。
 
 ```python
 # 「is-a」の主軸となる抽象モデル
@@ -660,13 +685,60 @@ class TaskBase(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 
-# 部品として機能を追加するだけのmixin
-class TimestampMixin:
+# 部品としてフィールドを追加するだけのmixin
+class TimestampMixin(models.Model):
+    class Meta:
+        abstract = True
+
     updated_at = models.DateTimeField(auto_now=True)
 
 
 class Task(TaskBase, TimestampMixin):
     ...
+```
+
+振る舞いを共有する場合。継承ではなくserviceへ委譲する。
+
+```python
+# NG: 親が子のメソッドを呼んでおり、制御フローがファイルをまたいで暗黙になる。
+#     publish()を書き直すと、それを継承する全モデルが影響を受ける
+class PublishableBase(models.Model):
+    class Meta:
+        abstract = True
+
+    published_at = models.DateTimeField(null=True)
+
+    def publish(self):
+        self.validate_publishable()  # 子が実装している前提
+        self.published_at = timezone.now()
+        self.save(update_fields=['published_at'])
+
+
+class Task(PublishableBase):
+    def validate_publishable(self):
+        ...
+```
+
+```python
+# OK: 宣言だけを継承し、振る舞いはserviceに置く
+class PublishableBase(models.Model):
+    class Meta:
+        abstract = True
+
+    published_at = models.DateTimeField(null=True)
+
+
+class Task(PublishableBase):
+    ...
+
+
+# services/task.py
+@transaction.atomic
+def publish(*, task: Task, published_at: datetime) -> Task:
+    _validate_publishable(task=task)
+    task.published_at = published_at
+    task.save(update_fields=['published_at'])
+    return task
 ```
 
 ## Model Table Naming Rules
