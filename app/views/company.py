@@ -4,8 +4,6 @@ from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from app.errors.base import DomainError
-from app.errors.company import DuplicateCompanyNameError
 from app.forms import CompanyForm
 from app.models import Company
 from app.permissions.access import can_create, can_delete, can_display_create_form, can_edit, can_view
@@ -87,15 +85,9 @@ def _create_company(request):
     form = CompanyForm(request.POST)
     if not form.is_valid():
         return _render_new_form(request, form)
-    name = form.cleaned_data['name']
-    if not can_create(request.user, MODEL_NAME, Company(name=name)):
+    if not can_create(request.user, MODEL_NAME, form.instance):
         raise PermissionDenied
-    try:
-        _validate_unique_name(name=name, exclude_pk=None)
-    except DomainError as error:
-        form.add_error(None, error.message)
-        return _render_new_form(request, form)
-    company = Company.objects.create(name=name)
+    company = form.save()
     messages.success(request, '会社を作成しました。')
     return redirect('app:company_show', pk=company.pk)
 
@@ -107,28 +99,16 @@ def _render_new_form(request, form):
 
 # 編集フォームを表示する
 def _display_edit_form(request, company):
-    form = CompanyForm(initial=_company_initial(company))
+    form = CompanyForm(instance=company)
     return _render_edit_form(request, company, form)
-
-
-# instanceの現在値からFormの初期値を組み立てる(ModelFormを使わないため明示的に行う)
-def _company_initial(company):
-    return {'name': company.name}
 
 
 # 会社の更新処理を行う
 def _update_company(request, company):
-    form = CompanyForm(request.POST)
+    form = CompanyForm(request.POST, instance=company)
     if not form.is_valid():
         return _render_edit_form(request, company, form)
-    name = form.cleaned_data['name']
-    try:
-        _validate_unique_name(name=name, exclude_pk=company.pk)
-    except DomainError as error:
-        form.add_error(None, error.message)
-        return _render_edit_form(request, company, form)
-    company.name = name
-    company.save(update_fields=['name'])
+    form.save()
     messages.success(request, '会社情報を更新しました。')
     return redirect('app:company_show', pk=company.pk)
 
@@ -136,12 +116,3 @@ def _update_company(request, company):
 # 会社編集フォームのレンダリング
 def _render_edit_form(request, company, form):
     return render(request, 'app/company/edit.html', {'form': form, 'company': company})
-
-
-# 会社名の重複を検証する(DjangoのValidationErrorを介さずDomainErrorを直接送出する)
-def _validate_unique_name(*, name: str, exclude_pk: int | None) -> None:
-    duplicates = Company.objects.filter(name=name)
-    if exclude_pk is not None:
-        duplicates = duplicates.exclude(pk=exclude_pk)
-    if duplicates.exists():
-        raise DuplicateCompanyNameError()

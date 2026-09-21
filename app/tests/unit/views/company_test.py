@@ -111,7 +111,7 @@ class TestCompanyCreateView:
         response = admin_client.post('/companies/new/', {'name': 'サンプル株式会社'})
 
         assert response.status_code == 200
-        assert 'この会社名は既に使用されています。' in response.context['form'].non_field_errors()
+        assert 'この会社名は既に使用されています。' in response.context['form'].errors['name']
         assert Company.objects.filter(name='サンプル株式会社').count() == 1
 
 
@@ -144,7 +144,7 @@ class TestCompanyEditView:
 
         company.refresh_from_db()
         assert response.status_code == 200
-        assert 'この会社名は既に使用されています。' in response.context['form'].non_field_errors()
+        assert 'この会社名は既に使用されています。' in response.context['form'].errors['name']
         assert company.name == 'サンプル株式会社'
 
     # 名前を変えずに更新した場合、自分自身との重複はエラーにならないことを確認
