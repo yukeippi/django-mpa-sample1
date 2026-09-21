@@ -16,7 +16,6 @@ Djangoが標準で持たないレイヤー(`services/`、`selectors/`のよう�
 - views/todo.py
 - forms/todo.py
 - validators/todo.py
-- errors/todo.py
 - tests/unit/models/todo_test.py
 - tests/unit/forms/todo_test.py
 - tests/unit/views/todo_test.py
@@ -653,7 +652,7 @@ class EmployeeForm(forms.ModelForm):
 - **フレームワークのクラスの継承**: `models.Model`、`forms.ModelForm`、`models.QuerySet`、`BaseCommand`、`ModelBackend`などの継承は、フレームワークが用意した拡張点である。ここから外れるほうが読み手にとって予想外になるため、通常どおり継承する
 - **Djangoの抽象モデル**: `abstract = True`の抽象モデルはフィールド(=状態)を持つ。下記のMixinの原則の例外になるが、Djangoにモデルのフィールドを共有する手段が他にないため、公式パターンとして割り切る
 
-### 自作の基底クラスを作る場合
+### 自作の基底クラスを作る場合(例外)
 
 次を満たすときに限る。迷ったらMixinか関数にする。
 
@@ -683,8 +682,10 @@ class SoftDeleteMixin:
 
 ### 命名
 
-- **`XxxBase`**: そのクラスが`is-a`の主軸(本体)であることを示す。抽象基底クラスとして、そこから具体的なクラスが派生する
+**既定は`XxxMixin`。`XxxBase`は上記「自作の基底クラスを作る場合(例外)」の条件を満たすときに限る。**
+
 - **`XxxMixin`**: 単体では完結しない、部品としての機能追加であることを示す。他のクラスと組み合わせて使う前提で、単体でインスタンス化されることは想定しない
+- **`XxxBase`**: そのクラスが`is-a`の主軸(本体)であることを示す。抽象基底クラスとして、そこから複数の具体的なクラスが派生する。フィールドを共有したいだけの抽象モデルはこれに当たらず、`XxxMixin`とする
 
 ### 並び順
 
@@ -704,23 +705,17 @@ class InvoiceUpdateView(AuditLogMixin, PermissionMixin, UpdateView):
 ### Example
 
 ```python
-# 「is-a」の主軸となる抽象モデル
-class TaskBase(models.Model):
-    class Meta:
-        abstract = True
-
-    created_at = models.DateTimeField(auto_now_add=True)
-
-
-# 部品としてフィールドを追加するだけのmixin
+# 部品としてフィールドを追加するだけのmixin。
+# フィールドの共有が目的なら、派生先が1つでもこの形にする(XxxBaseにしない)
 class TimestampMixin(models.Model):
     class Meta:
         abstract = True
 
+    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
 
-class Task(TaskBase, TimestampMixin):
+class Task(TimestampMixin):
     ...
 ```
 
