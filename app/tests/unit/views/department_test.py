@@ -129,6 +129,17 @@ class TestDepartmentCreateView:
         assert response.status_code == 200
         assert response.context['form'].is_valid() is False
 
+    # 同じ会社に同名の部門が既にある場合、エラー付きでフォームが再表示されることを確認
+    def test_post_duplicate_name_redisplays_form_with_error(self, admin_client):
+        company = Company.objects.create(name='サンプル株式会社')
+        Department.objects.create(company=company, name='開発部')
+
+        response = admin_client.post('/departments/new/', {'company': company.id, 'name': '開発部'})
+
+        assert response.status_code == 200
+        assert 'この会社には同じ名前の部門が既に存在します。' in response.context['form'].non_field_errors()
+        assert Department.objects.filter(company=company, name='開発部').count() == 1
+
 
 @pytest.mark.django_db
 class TestDepartmentEditView:
@@ -154,6 +165,21 @@ class TestDepartmentEditView:
         department.refresh_from_db()
         assert response.status_code == 302
         assert department.name == '更新後部門'
+
+    # 同じ会社の他部門と名前が重複する場合、エラー付きでフォームが再表示され更新されないことを確認
+    def test_post_duplicate_name_redisplays_form_with_error(self, admin_client):
+        company = Company.objects.create(name='サンプル株式会社')
+        Department.objects.create(company=company, name='営業部')
+        department = Department.objects.create(company=company, name='開発部')
+
+        response = admin_client.post(f'/departments/{department.id}/edit/', {
+            'company': company.id, 'name': '営業部',
+        })
+
+        department.refresh_from_db()
+        assert response.status_code == 200
+        assert 'この会社には同じ名前の部門が既に存在します。' in response.context['form'].non_field_errors()
+        assert department.name == '開発部'
 
     # 存在しない部門の場合404が返ることを確認
     def test_edit_nonexistent_department_returns_404(self, admin_client):

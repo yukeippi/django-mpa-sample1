@@ -1,11 +1,13 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from app import services
 from app.errors.base import DomainError
+from app.errors.employee import DuplicateEmployeeNumberError
 from app.forms import EmployeeForm
 from app.models import Employee
 from app.permissions.access import can_create, can_delete, can_display_create_form, can_edit, can_view
@@ -65,7 +67,7 @@ def delete(request: HttpRequest, pk: int) -> HttpResponse:
     if not can_delete(request.user, MODEL_NAME, employee):
         raise PermissionDenied
     if request.method == 'POST':
-        services.employee.delete(employee=employee)
+        _delete_employee(employee=employee)
         messages.success(request, '社員情報を削除しました。')
         return redirect('app:employee_index')
     return render(request, 'app/employee/delete.html', {'employee': employee})
@@ -91,7 +93,7 @@ def _create_employee(request):
     if not can_create(request.user, MODEL_NAME, candidate):
         raise PermissionDenied
     try:
-        employee = services.employee.create(form=form)
+        employee = _save_new_employee(form=form)
     except DomainError as error:
         form.add_error(None, error.message)
         return _render_new_form(request, form)
@@ -125,7 +127,7 @@ def _update_employee(request, employee):
     if not form.is_valid():
         return _render_edit_form(request, employee, form)
     try:
-        services.employee.update(employee=employee, form=form)
+        _save_employee_changes(employee=employee, form=form)
     except DomainError as error:
         form.add_error(None, error.message)
         return _render_edit_form(request, employee, form)
@@ -136,3 +138,51 @@ def _update_employee(request, employee):
 # 社員編集フォームのレンダリング
 def _render_edit_form(request, employee, form):
     return render(request, 'app/employee/edit.html', {'form': form, 'employee': employee})
+
+
+# UserとEmployeeを同時に作成する
+@transaction.atomic
+def _save_new_employee(*, form: EmployeeForm) -> Employee:
+    employee_number = form.cleaned_data['employee_number']
+    _validate_unique_employee_number(employee_number=employee_number, exclude_pk=None)
+
+    user = User.objects.create_user(
+        username=employee_number,
+        first_name=form.cleaned_data['first_name'],
+        last_name=form.cleaned_data['last_name'],
+        password=form.cleaned_data['password'],
+    )
+    return Employee.objects.create(user=user, employee_number=employee_number)
+
+
+# 社員情報を更新する(パスワードは入力があった場合のみ変更)
+@transaction.atomic
+def _save_employee_changes(*, employee: Employee, form: EmployeeForm) -> Employee:
+    employee_number = form.cleaned_data['employee_number']
+    _validate_unique_employee_number(employee_number=employee_number, exclude_pk=employee.pk)
+
+    employee.employee_number = employee_number
+    employee.save(update_fields=['employee_number'])
+
+    user = employee.user
+    user.first_name = form.cleaned_data['first_name']
+    user.last_name = form.cleaned_data['last_name']
+    if form.cleaned_data['password']:
+        user.set_password(form.cleaned_data['password'])
+    user.save()
+    return employee
+
+
+# 社員を削除する(UserをCASCADEで削除すると、紐づくEmployeeも削除される)
+@transaction.atomic
+def _delete_employee(*, employee: Employee) -> None:
+    employee.user.delete()
+
+
+# 社員番号の重複を検証する(DjangoのValidationErrorを介さずDomainErrorを直接送出する)
+def _validate_unique_employee_number(*, employee_number: str, exclude_pk: int | None) -> None:
+    duplicates = Employee.objects.filter(employee_number=employee_number)
+    if exclude_pk is not None:
+        duplicates = duplicates.exclude(pk=exclude_pk)
+    if duplicates.exists():
+        raise DuplicateEmployeeNumberError()

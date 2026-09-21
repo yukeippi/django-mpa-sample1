@@ -4,7 +4,6 @@ from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from app import services
 from app.forms import TaskForm
 from app.models import Task
 from app.permissions.roles import can_delete_task, can_edit_task
@@ -59,7 +58,7 @@ def delete(request: HttpRequest, pk: int) -> HttpResponse:
     if not can_delete_task(request.user, task):
         raise PermissionDenied
     if request.method == 'POST':
-        services.task.delete(task=task)
+        task.delete()
         messages.success(request, 'タスクを削除しました。')
         return redirect('app:task_index')
     return render(request, 'app/task/delete.html', {'task': task})
@@ -90,7 +89,7 @@ def _create_task(request):
     form = TaskForm(request.POST)
     if not form.is_valid():
         return _render_new_form(request, form)
-    task = services.task.create(form=form, created_by=request.user)
+    task = Task.objects.create(created_by=request.user, **form.cleaned_data)
     messages.success(request, 'タスクを作成しました。')
     return redirect('app:task_show', pk=task.pk)
 
@@ -123,7 +122,9 @@ def _update_task(request, task):
     form = TaskForm(request.POST)
     if not form.is_valid():
         return _render_edit_form(request, task, form)
-    services.task.update(task=task, form=form)
+    for field, value in form.cleaned_data.items():
+        setattr(task, field, value)
+    task.save(update_fields=[*form.cleaned_data.keys()])
     messages.success(request, 'タスクを更新しました。')
     return redirect('app:task_show', pk=task.pk)
 

@@ -1,5 +1,5 @@
 import pytest
-from app.models import ManagementGroup
+from app.models import Company, Department, ManagementGroup
 
 
 @pytest.mark.django_db
@@ -70,6 +70,72 @@ class TestManagementGroupCreateView:
         assert response.status_code == 302
         assert response.url == f'/management_groups/{group.id}/'
 
+    # 名前が重複する場合、エラー付きでフォームが再表示されることを確認
+    def test_post_duplicate_name_redisplays_form_with_error(self, admin_client):
+        ManagementGroup.objects.create(name='開発チーム', is_admin=True)
+
+        response = admin_client.post('/management_groups/new/', {
+            'name': '開発チーム', 'members': [], 'is_admin': True,
+        })
+
+        assert response.status_code == 200
+        assert 'この管理グループ名は既に使用されています。' in response.context['form'].non_field_errors()
+        assert ManagementGroup.objects.filter(name='開発チーム').count() == 1
+
+    # 全社管理者に部門を指定するとエラーになることを確認
+    def test_post_admin_group_with_department_redisplays_form_with_error(self, admin_client):
+        company = Company.objects.create(name='サンプル株式会社')
+        department = Department.objects.create(company=company, name='開発部')
+
+        response = admin_client.post('/management_groups/new/', {
+            'name': '開発チーム', 'members': [], 'is_admin': True, 'department': department.id,
+        })
+
+        assert response.status_code == 200
+        assert '全社管理者グループには部門を設定できません。' in response.context['form'].non_field_errors()
+
+    # 全社管理者でないのに部門が未指定だとエラーになることを確認
+    def test_post_non_admin_group_without_department_redisplays_form_with_error(self, admin_client):
+        response = admin_client.post('/management_groups/new/', {
+            'name': '開発チーム', 'members': [], 'permission_set_id': 1,
+        })
+
+        assert response.status_code == 200
+        assert '全社管理者でない場合は部門の設定が必須です。' in response.context['form'].non_field_errors()
+
+    # 全社管理者に権限セットを指定するとエラーになることを確認
+    def test_post_admin_group_with_permission_set_redisplays_form_with_error(self, admin_client):
+        response = admin_client.post('/management_groups/new/', {
+            'name': '開発チーム', 'members': [], 'is_admin': True, 'permission_set_id': 1,
+        })
+
+        assert response.status_code == 200
+        assert '全社管理者グループには権限セットを設定できません。' in response.context['form'].non_field_errors()
+
+    # 全社管理者でないのに権限セットが未指定だとエラーになることを確認
+    def test_post_non_admin_group_without_permission_set_redisplays_form_with_error(self, admin_client):
+        company = Company.objects.create(name='サンプル株式会社')
+        department = Department.objects.create(company=company, name='開発部')
+
+        response = admin_client.post('/management_groups/new/', {
+            'name': '開発チーム', 'members': [], 'department': department.id,
+        })
+
+        assert response.status_code == 200
+        assert '全社管理者でない場合は権限セットの設定が必須です。' in response.context['form'].non_field_errors()
+
+    # 存在しない権限セット番号を指定するとエラーになることを確認
+    def test_post_invalid_permission_set_id_redisplays_form_with_error(self, admin_client):
+        company = Company.objects.create(name='サンプル株式会社')
+        department = Department.objects.create(company=company, name='開発部')
+
+        response = admin_client.post('/management_groups/new/', {
+            'name': '開発チーム', 'members': [], 'department': department.id, 'permission_set_id': 999,
+        })
+
+        assert response.status_code == 200
+        assert '存在しない権限セット番号です。' in response.context['form'].non_field_errors()
+
 
 @pytest.mark.django_db
 class TestManagementGroupEditView:
@@ -94,6 +160,20 @@ class TestManagementGroupEditView:
         group.refresh_from_db()
         assert response.status_code == 302
         assert group.name == '運用チーム'
+
+    # 他グループと名前が重複する場合、エラー付きでフォームが再表示され更新されないことを確認
+    def test_post_duplicate_name_redisplays_form_with_error(self, admin_client):
+        ManagementGroup.objects.create(name='運用チーム', is_admin=True)
+        group = ManagementGroup.objects.create(name='開発チーム', is_admin=True)
+
+        response = admin_client.post(f'/management_groups/{group.id}/edit/', {
+            'name': '運用チーム', 'members': [], 'is_admin': True,
+        })
+
+        group.refresh_from_db()
+        assert response.status_code == 200
+        assert 'この管理グループ名は既に使用されています。' in response.context['form'].non_field_errors()
+        assert group.name == '開発チーム'
 
 
 @pytest.mark.django_db
