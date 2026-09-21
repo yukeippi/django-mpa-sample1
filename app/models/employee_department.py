@@ -10,13 +10,6 @@ class EmployeeDepartmentQuerySet(models.QuerySet):
     def primary(self) -> Self:
         return self.filter(is_primary=True)
 
-    # 同じ社員・同じ部門の所属に絞り込む(自分自身は除く)。Serviceの事前条件チェックから呼ぶ
-    def duplicate_of(self, *, employee, department, exclude_pk=None) -> Self:
-        queryset = self.filter(employee=employee, department=department)
-        if exclude_pk is not None:
-            queryset = queryset.exclude(pk=exclude_pk)
-        return queryset
-
 
 # 社員と部門の所属関係(主務/兼務)を表す中間モデル
 class EmployeeDepartment(models.Model):

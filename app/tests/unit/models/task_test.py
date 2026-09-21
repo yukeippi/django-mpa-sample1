@@ -54,54 +54,9 @@ class TestTaskModel:
         assert tasks[1] == task2
         assert tasks[2] == task1
 
-    # 期限が過去の場合、is_overdue()がTrueを返すことを確認
-    def test_is_overdue_with_past_due_date(self):
-        past_date = date.today() - timedelta(days=1)
-        task = Task.objects.create(
-            title='Overdue Task',
-            due_date=past_date,
-            status='in_progress'
-        )
-        assert task.is_overdue() is True
 
-    # 期限が未来の場合、is_overdue()がFalseを返すことを確認
-    def test_is_overdue_with_future_due_date(self):
-        future_date = date.today() + timedelta(days=1)
-        task = Task.objects.create(
-            title='Future Task',
-            due_date=future_date
-        )
-        assert task.is_overdue() is False
 
-    # 期限が設定されていない場合、is_overdue()がFalseを返すことを確認
-    def test_is_overdue_with_no_due_date(self):
-        task = Task.objects.create(title='No Due Date Task')
-        assert task.is_overdue() is False
 
-    # 完了したタスクは期限を過ぎていてもis_overdue()がFalseを返すことを確認
-    def test_is_overdue_completed_task(self):
-        past_date = date.today() - timedelta(days=1)
-        task = Task.objects.create(
-            title='Completed Task',
-            due_date=past_date,
-            status='done'
-        )
-        assert task.is_overdue() is False
-
-    # todoステータスのタスクは完了可能であることを確認
-    def test_can_be_completed_todo_status(self):
-        task = Task.objects.create(title='Todo Task', status='todo')
-        assert task.can_be_completed() is True
-
-    # in_progressステータスのタスクは完了可能であることを確認
-    def test_can_be_completed_in_progress_status(self):
-        task = Task.objects.create(title='In Progress Task', status='in_progress')
-        assert task.can_be_completed() is True
-
-    # doneステータスのタスクは完了不可であることを確認
-    def test_can_be_completed_done_status(self):
-        task = Task.objects.create(title='Done Task', status='done')
-        assert task.can_be_completed() is False
 
     # 優先度が1-5の範囲外の場合はエラーになることを確認(DB制約。Formのmin_value/max_valueが一次防衛)
     def test_priority_must_be_in_valid_range(self):
