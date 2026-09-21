@@ -19,6 +19,7 @@
 - pytest 9.0.3+ / pytest-django 4.12.0+ (テストフレームワーク)
 - pytest-playwright 0.7.2+ / playwright 1.58.0+ (E2Eテスト用ブラウザ自動化)
 - pytest-xdist 3.8.0+ (並列テスト実行)
+- mypy 2.3.1+ / django-stubs 6.1.1+ (静的型チェック)
 - パッケージ管理: uv
 
 ## 3. ディレクトリ構成
@@ -78,6 +79,9 @@ pytest                      # 全テスト
 pytest app/tests/unit/      # ユニットテストのみ
 pytest app/tests/e2e/       # E2Eテストのみ
 pytest --cov=app --cov=config --cov-report=html --cov-report=term  # カバレッジ付き
+
+# 型チェック
+mypy app common config
 ```
 
 詳細は [README.md](README.md) を参照。

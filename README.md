@@ -173,6 +173,16 @@ pytest --cov=app --cov=config --cov-report=html --cov-report=term
 
 詳細なテストガイドは [docs/testing.md](docs/testing.md) を参照してください。
 
+## 型チェック
+
+mypyとdjango-stubsで静的な型チェックを行います。
+
+```bash
+mypy app common config
+```
+
+段階的に導入しているため、型注釈が書かれている箇所だけを検査します(`check_untyped_defs = false`)。`app/tests/` と `app/seeds/` は対象外です。設定は `pyproject.toml` の `[tool.mypy]` にあります。
+
 ## 開発用コマンド
 
 ### TODO/FIXME/OPTIMIZEコメントの一覧表示
@@ -211,6 +221,7 @@ python manage.py seed_database
 - pytest-playwright 0.7.2+ (Playwright用pytestプラグイン)
 - pytest-xdist 3.8.0+ (並列テスト実行)
 - playwright 1.58.0+ (E2Eテスト用ブラウザ自動化)
+- mypy 2.3.1+ / django-stubs 6.1.1+ (静的型チェック)
 
 ## 環境変数について
 
