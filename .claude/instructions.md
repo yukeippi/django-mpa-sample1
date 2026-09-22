@@ -9,7 +9,7 @@
 
 1. **全体構成** — File Structure Rules / Common Module Rules
 2. **モデル** — Model Table Naming Rules / QuerySet Rules / Migration Rules / Seed Data Rules
-3. **入力と検証** — Validation Rules / Form Rules / Validator Rules / Rules Directory (共有制約) Rules
+3. **入力と検証** — Validation Rules / Form Rules / Validator Rules
 4. **ビュー** — View Naming Rules / View Method-Branch Rules / Read Rules / View Write Rules / Service Rules
 5. **テンプレートとCSS** — Layout Rules / Template Directory Rules / Template Rules / Partial Template Rules / CSS Rules
 6. **Pythonコードの書き方** — Control Flow Rules / Function Signature Rules / Inheritance Rules / Comment Rules
@@ -37,7 +37,7 @@ Djangoが標準で持たないレイヤー(`services/`、`selectors/`のよう�
 
 各ディレクトリに__init__.pyを配置すること。
 
-`tests/unit/`配下は、ソース側の`models/`, `forms/`, `views/`, `lib/`と対応するレイヤーごとのディレクトリにさらに分割する(Railsの`test/models/`, `test/controllers/`に相当)。`app/lib/`(`auth.py`/`validators/`等、app内で共有するロジック。詳細はCommon Module Rulesを参照)のテストも同様に`tests/unit/lib/`に置き、`app/lib/`内でディレクトリを切っている場合はその構造も反映する(例: `tests/unit/lib/auth_test.py`、`tests/unit/lib/validators/todo_test.py`)。`app/rules/`(役割はRules Directory Rulesを参照)は単純な定義の並びであることが多く、分岐ロジックが生じた場合のみテストディレクトリを追加する。`tests/e2e/`はページ単位のテストのため、このレイヤー分割は行わない。
+`tests/unit/`配下は、ソース側の`models/`, `forms/`, `views/`, `lib/`と対応するレイヤーごとのディレクトリにさらに分割する(Railsの`test/models/`, `test/controllers/`に相当)。`app/lib/`(`auth.py`/`validators/`等、app内で共有するロジック。詳細はCommon Module Rulesを参照)のテストも同様に`tests/unit/lib/`に置き、`app/lib/`内でディレクトリを切っている場合はその構造も反映する(例: `tests/unit/lib/auth_test.py`、`tests/unit/lib/validators/todo_test.py`)。`tests/e2e/`はページ単位のテストのため、このレイヤー分割は行わない。
 
 ### Common Module Rules
 
@@ -66,7 +66,6 @@ app/
 ├── models/                  # 永続化・状態判定
 ├── views/                   # HTTPの入出力・モデルへの書き込み(View Write Rules参照)
 ├── forms/                   # 入力検証(画面単位。Validation Rules参照)
-├── rules/                   # Form/Validatorが共有する形式的制約(Rules Directory Rules参照)
 ├── lib/                     # 上記のどれにも属さない、app内で共有するコード
 │   ├── __init__.py
 │   ├── auth.py              # 認証ロジック(ログイン等、誰であるかの検証)
@@ -370,7 +369,9 @@ def _create_task(request):
 # app/lib/validators/employee.py
 import re
 from django.core.exceptions import ValidationError
-from app.rules.employee import EMPLOYEE_NUMBER_REGEX
+
+# 社員番号の形式(例: E0001)
+EMPLOYEE_NUMBER_REGEX = r'^E\d{4}$'
 
 
 # 社員番号の形式を検証する
@@ -384,23 +385,6 @@ def validate_employee_number_format(value: str) -> None:
 from . import employee
 
 __all__ = ['employee']
-```
-
-### Rules Directory (共有制約) Rules
-
-Validator(Pure Function)とviewのユースケース検証(Validation Rules参照)の両方から参照したい、DBに依存しない形式的な制約(正規表現・桁数などの定数)は`app/rules/`にまとめる。同じ正規表現が複数箇所に二重に書かれることを防ぐ。
-
-- **配置**: 単一モデルにのみ関係する制約は`app/rules/<model>.py`、複数モデルで共有する制約は関心事ごとのファイル(`app/rules/format.py`等)に置く
-- **`app/lib/validators/`(Validator Rules)との違い**: `app/rules/`は正規表現・定数などのDjango非依存の値だけを持つ。`app/lib/validators/`はその定数を使って実際に判定し、失敗時に`ValidationError`を送出するPure Functionを置く場所
-- **DBを参照しない**: 純粋な定数・正規表現に限る。DBを参照する検証はValidation Rulesに従う
-
-#### Example
-
-```python
-# app/rules/employee.py
-
-# 社員番号の形式(例: E0001)
-EMPLOYEE_NUMBER_REGEX = r'^E\d{4}$'
 ```
 
 ```python
