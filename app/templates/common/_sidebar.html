@@ -1,0 +1,26 @@
+{% with current=request.resolver_match.url_name|default:'' %}
+<aside class="ds-sidebar">
+    <a class="ds-brand" href="{% url 'app:index' %}"><span class="ds-brand-mark"><span class="ds-icon ds-icon--check"></span></span>Task Manager</a>
+    {% if user.is_authenticated %}
+    <div class="ds-nav-label">メニュー</div>
+    <nav class="ds-nav">
+        <a class="ds-nav-item" href="{% url 'app:index' %}"{% if current == 'index' %} aria-current="page"{% endif %}><span class="ds-icon ds-icon--home"></span>ホーム</a>
+        <a class="ds-nav-item" href="{% url 'app:task_index' %}"{% if 'task_' in current %} aria-current="page"{% endif %}><span class="ds-icon ds-icon--tasks"></span>タスク一覧</a>
+        <a class="ds-nav-item" href="{% url 'app:employee_index' %}"{% if 'employee_' in current %} aria-current="page"{% endif %}><span class="ds-icon ds-icon--users"></span>社員一覧</a>
+        <a class="ds-nav-item" href="{% url 'app:company_index' %}"{% if 'company_' in current %} aria-current="page"{% endif %}><span class="ds-icon ds-icon--building"></span>会社一覧</a>
+        <a class="ds-nav-item" href="{% url 'app:department_index' %}"{% if 'department_' in current %} aria-current="page"{% endif %}><span class="ds-icon ds-icon--sitemap"></span>部門一覧</a>
+        {% if user.is_staff %}
+        <a class="ds-nav-item" href="{% url 'app:management_group_index' %}"{% if 'management_group_' in current %} aria-current="page"{% endif %}><span class="ds-icon ds-icon--shield"></span>管理グループ一覧</a>
+        {% endif %}
+    </nav>
+    <form method="post" action="{% url 'app:logout' %}" class="ds-sidebar-footer">
+        {% csrf_token %}
+        <button type="submit" id="logout-button" class="ds-nav-item"><span class="ds-icon ds-icon--logout"></span>ログアウト</button>
+    </form>
+    {% else %}
+    <div class="ds-sidebar-footer">
+        <a class="ds-nav-item" id="login-link" href="{% url 'app:login' %}"><span class="ds-icon ds-icon--login"></span>ログイン</a>
+    </div>
+    {% endif %}
+</aside>
+{% endwith %}

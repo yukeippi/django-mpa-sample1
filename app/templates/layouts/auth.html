@@ -1,0 +1,11 @@
+{% extends 'layouts/default.html' %}
+
+{% block shell %}
+<main class="ds-auth">
+    <div class="ds-auth-card">
+        <a class="ds-brand" href="{% url 'app:index' %}"><span class="ds-brand-mark"><span class="ds-icon ds-icon--check"></span></span>Task Manager</a>
+        {% include 'common/_messages.html' %}
+        {% block content %}{% endblock %}
+    </div>
+</main>
+{% endblock %}

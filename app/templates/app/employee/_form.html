@@ -1,27 +1,37 @@
-<form method="post" id="employee-form">
+<form method="post" id="employee-form" class="ds-form">
     {% csrf_token %}
     {% if form.non_field_errors %}
-    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+    <div class="ds-alert ds-alert--error"><span class="ds-alert-message">{{ form.non_field_errors }}</span></div>
     {% endif %}
-    <div class="form-field mb-3">
-        <label for="{{ form.employee_number.id_for_label }}" class="form-label">社員番号</label>
+    <div class="ds-field">
+        <label for="{{ form.employee_number.id_for_label }}" class="ds-label">社員番号</label>
         {{ form.employee_number }}
-        <div class="text-danger small">{{ form.employee_number.errors }}</div>
+        {% if form.employee_number.errors %}
+        <div class="ds-field-error">{{ form.employee_number.errors }}</div>
+        {% endif %}
     </div>
-    <div class="form-field mb-3">
-        <label for="{{ form.last_name.id_for_label }}" class="form-label">姓</label>
+    <div class="ds-field">
+        <label for="{{ form.last_name.id_for_label }}" class="ds-label">姓</label>
         {{ form.last_name }}
-        <div class="text-danger small">{{ form.last_name.errors }}</div>
+        {% if form.last_name.errors %}
+        <div class="ds-field-error">{{ form.last_name.errors }}</div>
+        {% endif %}
     </div>
-    <div class="form-field mb-3">
-        <label for="{{ form.first_name.id_for_label }}" class="form-label">名</label>
+    <div class="ds-field">
+        <label for="{{ form.first_name.id_for_label }}" class="ds-label">名</label>
         {{ form.first_name }}
-        <div class="text-danger small">{{ form.first_name.errors }}</div>
+        {% if form.first_name.errors %}
+        <div class="ds-field-error">{{ form.first_name.errors }}</div>
+        {% endif %}
     </div>
-    <div class="form-field mb-3">
-        <label for="{{ form.password.id_for_label }}" class="form-label">パスワード</label>
+    <div class="ds-field">
+        <label for="{{ form.password.id_for_label }}" class="ds-label">パスワード</label>
         {{ form.password }}
-        <div class="text-danger small">{{ form.password.errors }}</div>
+        {% if form.password.errors %}
+        <div class="ds-field-error">{{ form.password.errors }}</div>
+        {% endif %}
     </div>
-    <button type="submit" id="employee-form-submit" class="btn btn-primary">保存</button>
+    <div class="ds-form-actions">
+        <button type="submit" id="employee-form-submit" class="ds-btn ds-btn-primary">保存</button>
+    </div>
 </form>

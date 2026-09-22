@@ -3,25 +3,25 @@
 {% block title %}{{ employee }}{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 id="employee-name" class="mb-0">{{ employee }}</h1>
-    <div>
-        <a href="{% url 'app:employee_index' %}" class="btn btn-outline-secondary">一覧に戻る</a>
-        <a href="{% url 'app:employee_edit' employee.pk %}" id="edit-employee-link" class="btn btn-primary">編集</a>
-        <a href="{% url 'app:employee_delete' employee.pk %}" id="delete-employee-link" class="btn btn-danger">削除</a>
+<div class="ds-page-header">
+    <h1 id="employee-name" class="ds-h1">{{ employee }}</h1>
+    <div class="ds-actions">
+        <a href="{% url 'app:employee_index' %}" class="ds-btn">一覧に戻る</a>
+        <a href="{% url 'app:employee_edit' employee.pk %}" id="edit-employee-link" class="ds-btn ds-btn-primary">編集</a>
+        <a href="{% url 'app:employee_delete' employee.pk %}" id="delete-employee-link" class="ds-btn ds-btn-danger">削除</a>
     </div>
 </div>
 
-<div class="employee-detail card">
-    <div class="card-body">
-        <div class="employee-field mb-3">
-            <label class="form-label fw-bold">社員番号:</label>
-            <p id="employee-number">{{ employee.employee_number }}</p>
+<div class="ds-card ds-card--flush ds-card--narrow">
+    <dl class="ds-detail">
+        <div class="ds-detail-item">
+            <dt class="ds-detail-label">社員番号</dt>
+            <dd class="ds-detail-value" id="employee-number">{{ employee.employee_number }}</dd>
         </div>
-        <div class="employee-field mb-0">
-            <label class="form-label fw-bold">氏名:</label>
-            <p id="employee-full-name">{{ employee }}</p>
+        <div class="ds-detail-item">
+            <dt class="ds-detail-label">氏名</dt>
+            <dd class="ds-detail-value" id="employee-full-name">{{ employee }}</dd>
         </div>
-    </div>
+    </dl>
 </div>
 {% endblock %}
