@@ -92,6 +92,18 @@ mypy app common config
 
 開発フェーズに応じた方針(既存実装への追従度合いなど)は [.claude/development-phase.md](.claude/development-phase.md) を参照してください。
 
+### 判断の報告
+
+`.claude/instructions.md` に答えの無い判断をした場合、その場で決めて進めず、次を報告すること。
+
+- 何を判断したか
+- 他に採り得た案があったか(無ければ「無し」と書く)
+- 案があった場合、なぜ採らなかったか
+
+挙げる案は、実際にその実装で比較検討したものに限る。一般論として考えられる案を並べない。
+
+規約を追加するか、ADRを起こすかは人が決める(ADRの基準・書式は instructions.md の ADR Rules を参照)。
+
 ### コミットメッセージ
 
 コミットメッセージに `Co-Authored-By: Claude ...` のようなAI署名のトレーラーは含めないこと。
