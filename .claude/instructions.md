@@ -1134,6 +1134,17 @@ class TestTaskComplete:
         task.refresh_from_db()
         assert task.completed_at is not None
 
+    # 完了すると履歴が1件作成される
+    def test_complete_creates_history_record(self, auth_client, sample_user):
+        task = Task.objects.create(title='タスク', assignee=sample_user, status=Task.Status.IN_PROGRESS)
+
+        auth_client.post(f'/tasks/{task.pk}/complete/')
+
+        # get()は0件でも2件以上でも例外になるため、「1件だけ作られる」ことを件数のassertなしに表現できる
+        history = TaskHistory.objects.get(task=task)
+        assert history.action == 'completed'
+        assert history.operator == sample_user
+
     # 完了済みのタスクは完了にできず、状態も変わらない
     def test_complete_already_completed_task_is_rejected(self, auth_client, sample_user):
         task = Task.objects.create(title='タスク', assignee=sample_user, status=Task.Status.COMPLETED)
@@ -1222,20 +1233,31 @@ def test_create_with_invalid_input_does_not_create_record(auth_client):
 #### Example
 
 ```python
-# 避ける書き方(内部の呼び出し構造を検証しており、ヘルパーを分割しただけで落ちる)
-def test_complete_calls_history_creation(mocker, sample_user):
-    spy = mocker.patch('app.views.task._create_history')
-    _apply_completion(task=task, operator=sample_user)
-    spy.assert_called_once_with(task=task, operator=sample_user)
+# 避ける書き方(内部の呼び出し構造を検証している。ヘルパーを改名・分割しただけで落ちる)
+@pytest.mark.django_db
+def test_complete_calls_notification(monkeypatch, auth_client, sample_user):
+    task = Task.objects.create(title='タスク', assignee=sample_user, status=Task.Status.IN_PROGRESS)
+    calls = []
+    monkeypatch.setattr('app.views.task.send_completion_notice', calls.append)
+
+    auth_client.post(f'/tasks/{task.pk}/complete/')
+
+    assert calls == [task]
 
 
-# 良い書き方(結果として残る状態を検証する)
-def test_complete_creates_history_record(sample_user):
-    _apply_completion(task=task, operator=sample_user)
+# 良い書き方(外から操作し、外部との契約として観測できるものを検証する)
+@pytest.mark.django_db
+def test_complete_notifies_assignee(auth_client, sample_user, django_capture_on_commit_callbacks):
+    task = Task.objects.create(title='タスク', assignee=sample_user, status=Task.Status.IN_PROGRESS)
 
-    history = TaskHistory.objects.get(task=task)
-    assert history.action == 'completed'
-    assert history.operator == sample_user
+    # 通知はtransaction.on_commit()に包まれており(View Write Rules参照)、テストのトランザクションは
+    # ロールバックされるため、明示的にコールバックを実行させないと送信されないまま通ってしまう
+    with django_capture_on_commit_callbacks(execute=True):
+        auth_client.post(f'/tasks/{task.pk}/complete/')
+
+    # メール送信はDjangoがmail.outboxに保持するため、モックせずに宛先・内容を検証できる
+    assert len(mail.outbox) == 1
+    assert mail.outbox[0].to == [sample_user.email]
 ```
 
 ## 意思決定の記録
