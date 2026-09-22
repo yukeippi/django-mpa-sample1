@@ -2,19 +2,19 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect, render
-from app import selectors, services
-from app.errors.base import DomainError
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from app.lib.types import AuthenticatedHttpRequest
 from app.forms import ManagementGroupForm
+from app.models import ManagementGroup
 from app.permissions.roles import is_admin
 
 
 # 管理グループ一覧
 @login_required
-def index(request: HttpRequest) -> HttpResponse:
+def index(request: AuthenticatedHttpRequest) -> HttpResponse:
     _require_admin(request)
-    groups_qs = selectors.management_group.list_management_groups()
+    groups_qs = ManagementGroup.objects.all()
     paginator = Paginator(groups_qs, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'app/management_group/index.html', {
@@ -25,15 +25,15 @@ def index(request: HttpRequest) -> HttpResponse:
 
 # 管理グループ詳細
 @login_required
-def show(request: HttpRequest, pk: int) -> HttpResponse:
+def show(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
     _require_admin(request)
-    management_group = selectors.management_group.get_management_group(pk=pk)
+    management_group = get_object_or_404(ManagementGroup, pk=pk)
     return render(request, 'app/management_group/show.html', {'management_group': management_group})
 
 
 # 管理グループ新規作成
 @login_required
-def new(request: HttpRequest) -> HttpResponse:
+def new(request: AuthenticatedHttpRequest) -> HttpResponse:
     _require_admin(request)
     if request.method == 'POST':
         return _create_management_group(request)
@@ -42,9 +42,9 @@ def new(request: HttpRequest) -> HttpResponse:
 
 # 管理グループ編集
 @login_required
-def edit(request: HttpRequest, pk: int) -> HttpResponse:
+def edit(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
     _require_admin(request)
-    management_group = selectors.management_group.get_management_group(pk=pk)
+    management_group = get_object_or_404(ManagementGroup, pk=pk)
     if request.method == 'POST':
         return _update_management_group(request, management_group)
     return _display_edit_form(request, management_group)
@@ -52,11 +52,11 @@ def edit(request: HttpRequest, pk: int) -> HttpResponse:
 
 # 管理グループ削除
 @login_required
-def delete(request: HttpRequest, pk: int) -> HttpResponse:
+def delete(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
     _require_admin(request)
-    management_group = selectors.management_group.get_management_group(pk=pk)
+    management_group = get_object_or_404(ManagementGroup, pk=pk)
     if request.method == 'POST':
-        services.management_group.delete(management_group=management_group)
+        management_group.delete()
         messages.success(request, '管理グループを削除しました。')
         return redirect('app:management_group_index')
     return render(request, 'app/management_group/delete.html', {'management_group': management_group})
@@ -84,11 +84,7 @@ def _create_management_group(request):
     form = ManagementGroupForm(request.POST)
     if not form.is_valid():
         return _render_new_form(request, form)
-    try:
-        management_group = services.management_group.create(form=form)
-    except DomainError as error:
-        form.add_error(None, error.message)
-        return _render_new_form(request, form)
+    management_group = form.save()
     messages.success(request, '管理グループを作成しました。')
     return redirect('app:management_group_show', pk=management_group.pk)
 
@@ -100,31 +96,16 @@ def _render_new_form(request, form):
 
 # 編集フォームを表示する
 def _display_edit_form(request, management_group):
-    form = ManagementGroupForm(initial=_management_group_initial(management_group))
+    form = ManagementGroupForm(instance=management_group)
     return _render_edit_form(request, management_group, form)
-
-
-# instanceの現在値からFormの初期値を組み立てる(ModelFormを使わないため明示的に行う)
-def _management_group_initial(management_group):
-    return {
-        'name': management_group.name,
-        'members': management_group.members.all(),
-        'is_admin': management_group.is_admin,
-        'department': management_group.department,
-        'permission_set_id': management_group.permission_set_id,
-    }
 
 
 # 管理グループの更新処理を行う
 def _update_management_group(request, management_group):
-    form = ManagementGroupForm(request.POST)
+    form = ManagementGroupForm(request.POST, instance=management_group)
     if not form.is_valid():
         return _render_edit_form(request, management_group, form)
-    try:
-        services.management_group.update(management_group=management_group, form=form)
-    except DomainError as error:
-        form.add_error(None, error.message)
-        return _render_edit_form(request, management_group, form)
+    form.save()
     messages.success(request, '管理グループを更新しました。')
     return redirect('app:management_group_show', pk=management_group.pk)
 

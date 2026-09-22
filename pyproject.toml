@@ -38,3 +38,27 @@ omit = [
     "*/apps.py",
     "*/admin.py",
 ]
+
+[dependency-groups]
+dev = [
+    "django-stubs>=6.1.1",
+    "mypy>=2.3.1",
+]
+
+[tool.mypy]
+python_version = "3.14"
+plugins = ["mypy_django_plugin.main"]
+# 段階的に導入するため、まずは「型注釈が書かれている箇所」だけを検査する。
+# 注釈の無い関数は対象外とし、Protocolによる依存宣言(Inheritance Rules参照)が
+# 実際に検査されることを最優先の目的とする。
+check_untyped_defs = false
+disallow_untyped_defs = false
+ignore_missing_imports = true
+exclude = ["^app/migrations/", "^\\.venv/"]
+
+[[tool.mypy.overrides]]
+module = ["app.tests.*", "app.seeds.*"]
+ignore_errors = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings"

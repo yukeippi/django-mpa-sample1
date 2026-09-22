@@ -104,6 +104,16 @@ class TestCompanyCreateView:
         assert response.status_code == 200
         assert response.context['form'].is_valid() is False
 
+    # 既存の会社と名前が重複する場合、エラー付きでフォームが再表示されることを確認
+    def test_post_duplicate_name_redisplays_form_with_error(self, admin_client):
+        Company.objects.create(name='サンプル株式会社')
+
+        response = admin_client.post('/companies/new/', {'name': 'サンプル株式会社'})
+
+        assert response.status_code == 200
+        assert 'この会社名は既に使用されています。' in response.context['form'].errors['name']
+        assert Company.objects.filter(name='サンプル株式会社').count() == 1
+
 
 @pytest.mark.django_db
 class TestCompanyEditView:
@@ -124,6 +134,28 @@ class TestCompanyEditView:
         company.refresh_from_db()
         assert response.status_code == 302
         assert company.name == '更新後株式会社'
+
+    # 他の会社と名前が重複する場合、エラー付きでフォームが再表示され更新されないことを確認
+    def test_post_duplicate_name_redisplays_form_with_error(self, admin_client):
+        Company.objects.create(name='既存株式会社')
+        company = Company.objects.create(name='サンプル株式会社')
+
+        response = admin_client.post(f'/companies/{company.id}/edit/', {'name': '既存株式会社'})
+
+        company.refresh_from_db()
+        assert response.status_code == 200
+        assert 'この会社名は既に使用されています。' in response.context['form'].errors['name']
+        assert company.name == 'サンプル株式会社'
+
+    # 名前を変えずに更新した場合、自分自身との重複はエラーにならないことを確認
+    def test_post_same_name_updates_successfully(self, admin_client):
+        company = Company.objects.create(name='サンプル株式会社')
+
+        response = admin_client.post(f'/companies/{company.id}/edit/', {'name': 'サンプル株式会社'})
+
+        company.refresh_from_db()
+        assert response.status_code == 302
+        assert company.name == 'サンプル株式会社'
 
     # 存在しない会社の場合404が返ることを確認
     def test_edit_nonexistent_company_returns_404(self, admin_client):

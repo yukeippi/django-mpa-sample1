@@ -14,20 +14,29 @@
 
 ### ディレクトリ構造
 
+ユニットテストは、ソース側のディレクトリ構成に対応するレイヤーごとに分け、その中でモデルごとにファイルを分割する(Railsの`test/models/`, `test/controllers/`に相当)。E2Eテストはページ単位のためレイヤー分割は行わない。
+
 ```
 app/
 └── tests/
     ├── __init__.py
     ├── conftest.py              # 共通のフィクスチャ設定
-    ├── unit/                    # ユニットテスト(モデルごとにファイル分割)
-    │   ├── __init__.py
-    │   └── task_test.py         # Taskモデルのテスト
+    ├── unit/                    # ユニットテスト(レイヤーごと → モデルごと)
+    │   ├── models/
+    │   │   └── task_test.py
+    │   ├── forms/
+    │   ├── views/
+    │   ├── permissions/
+    │   └── lib/
+    │       └── validators/
     └── e2e/                     # E2Eテスト(機能ごとにファイル分割)
         ├── __init__.py
         ├── conftest.py          # E2E専用のフィクスチャ
         ├── home_test.py         # ホームページのE2Eテスト
         └── task_test.py         # タスク関連ページのE2Eテスト
 ```
+
+各ディレクトリに`__init__.py`を配置する。詳細は[.claude/instructions.md](../.claude/instructions.md)のFile Structure Rulesを参照。
 
 ## テストの実行方法
 

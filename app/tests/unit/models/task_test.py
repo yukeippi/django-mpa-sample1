@@ -54,6 +54,34 @@ class TestTaskModel:
         assert tasks[1] == task2
         assert tasks[2] == task1
 
+
+
+
+
+    # 優先度が1-5の範囲外の場合はエラーになることを確認(DB制約。Formのmin_value/max_valueが一次防衛)
+    def test_priority_must_be_in_valid_range(self):
+        with pytest.raises(IntegrityError):
+            Task.objects.create(title='Invalid Priority Task', priority=6)
+
+    # タスクとユーザーの関連が正しく機能することを確認
+    def test_task_user_relationship(self, sample_user):
+        task1 = Task.objects.create(title='Task 1', assigned_to=sample_user)
+        task2 = Task.objects.create(title='Task 2', assigned_to=sample_user)
+
+        user_tasks = sample_user.tasks.all()
+        assert task1 in user_tasks
+        assert task2 in user_tasks
+        assert user_tasks.count() == 2
+
+    # ユーザーが削除されてもタスクは削除されず、assigned_toがNullになることを確認
+    def test_task_user_deletion_sets_null(self, sample_user):
+        task = Task.objects.create(title='Task', assigned_to=sample_user)
+        sample_user.delete()
+
+        task.refresh_from_db()
+        assert task.assigned_to is None
+        assert task.id is not None
+
     # 期限が過去の場合、is_overdue()がTrueを返すことを確認
     def test_is_overdue_with_past_due_date(self):
         past_date = date.today() - timedelta(days=1)
@@ -102,27 +130,3 @@ class TestTaskModel:
     def test_can_be_completed_done_status(self):
         task = Task.objects.create(title='Done Task', status='done')
         assert task.can_be_completed() is False
-
-    # 優先度が1-5の範囲外の場合はエラーになることを確認(DB制約。Formのmin_value/max_valueが一次防衛)
-    def test_priority_must_be_in_valid_range(self):
-        with pytest.raises(IntegrityError):
-            Task.objects.create(title='Invalid Priority Task', priority=6)
-
-    # タスクとユーザーの関連が正しく機能することを確認
-    def test_task_user_relationship(self, sample_user):
-        task1 = Task.objects.create(title='Task 1', assigned_to=sample_user)
-        task2 = Task.objects.create(title='Task 2', assigned_to=sample_user)
-
-        user_tasks = sample_user.tasks.all()
-        assert task1 in user_tasks
-        assert task2 in user_tasks
-        assert user_tasks.count() == 2
-
-    # ユーザーが削除されてもタスクは削除されず、assigned_toがNullになることを確認
-    def test_task_user_deletion_sets_null(self, sample_user):
-        task = Task.objects.create(title='Task', assigned_to=sample_user)
-        sample_user.delete()
-
-        task.refresh_from_db()
-        assert task.assigned_to is None
-        assert task.id is not None

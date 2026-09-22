@@ -2,17 +2,18 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
-from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.shortcuts import redirect, render
-from app import selectors, services
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from app.lib.types import AuthenticatedHttpRequest
 from app.forms import TaskForm
+from app.models import Task
 from app.permissions.roles import can_delete_task, can_edit_task
 
 
 # タスク一覧
 @login_required
-def index(request: HttpRequest) -> HttpResponse:
-    tasks_qs = selectors.task.list_tasks()
+def index(request: AuthenticatedHttpRequest) -> HttpResponse:
+    tasks_qs = Task.objects.all()
     paginator = Paginator(tasks_qs, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'app/task/index.html', {
@@ -23,8 +24,8 @@ def index(request: HttpRequest) -> HttpResponse:
 
 # タスク詳細
 @login_required
-def show(request: HttpRequest, pk: int) -> HttpResponse:
-    task = selectors.task.get_task(pk=pk)
+def show(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
+    task = get_object_or_404(Task, pk=pk)
     return render(request, 'app/task/show.html', {
         'task': task,
         'can_edit': can_edit_task(request.user, task),
@@ -34,7 +35,7 @@ def show(request: HttpRequest, pk: int) -> HttpResponse:
 
 # タスク新規作成
 @login_required
-def new(request: HttpRequest) -> HttpResponse:
+def new(request: AuthenticatedHttpRequest) -> HttpResponse:
     if request.method == 'POST':
         return _create_task(request)
     return _display_new_form(request)
@@ -42,8 +43,8 @@ def new(request: HttpRequest) -> HttpResponse:
 
 # タスク編集
 @login_required
-def edit(request: HttpRequest, pk: int) -> HttpResponse:
-    task = selectors.task.get_task(pk=pk)
+def edit(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
+    task = get_object_or_404(Task, pk=pk)
     if not can_edit_task(request.user, task):
         raise PermissionDenied
     if request.method == 'POST':
@@ -53,12 +54,12 @@ def edit(request: HttpRequest, pk: int) -> HttpResponse:
 
 # タスク削除
 @login_required
-def delete(request: HttpRequest, pk: int) -> HttpResponse:
-    task = selectors.task.get_task(pk=pk)
+def delete(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
+    task = get_object_or_404(Task, pk=pk)
     if not can_delete_task(request.user, task):
         raise PermissionDenied
     if request.method == 'POST':
-        services.task.delete(task=task)
+        task.delete()
         messages.success(request, 'タスクを削除しました。')
         return redirect('app:task_index')
     return render(request, 'app/task/delete.html', {'task': task})
@@ -66,9 +67,9 @@ def delete(request: HttpRequest, pk: int) -> HttpResponse:
 
 # タスクAPI(E2Eテスト用)
 @login_required
-def api(request: HttpRequest) -> HttpResponse:
+def api(request: AuthenticatedHttpRequest) -> HttpResponse:
     if request.method == 'GET':
-        tasks = selectors.task.list_tasks().values('id', 'title', 'status', 'priority')
+        tasks = Task.objects.all().values('id', 'title', 'status', 'priority')
         return JsonResponse(list(tasks), safe=False)
     return JsonResponse({'error': 'Method not allowed'}, status=405)
 
@@ -89,7 +90,9 @@ def _create_task(request):
     form = TaskForm(request.POST)
     if not form.is_valid():
         return _render_new_form(request, form)
-    task = services.task.create(form=form, created_by=request.user)
+    task = form.save(commit=False)
+    task.created_by = request.user
+    task.save()
     messages.success(request, 'タスクを作成しました。')
     return redirect('app:task_show', pk=task.pk)
 
@@ -101,28 +104,17 @@ def _render_new_form(request, form):
 
 # 編集フォームを表示する
 def _display_edit_form(request, task):
-    form = TaskForm(initial=_task_initial(task))
+    form = TaskForm(instance=task)
     return _render_edit_form(request, task, form)
 
-
-# instanceの現在値からFormの初期値を組み立てる(ModelFormを使わないため明示的に行う)
-def _task_initial(task):
-    return {
-        'title': task.title,
-        'description': task.description,
-        'status': task.status,
-        'priority': task.priority,
-        'assigned_to': task.assigned_to,
-        'due_date': task.due_date,
-    }
 
 
 # タスクの更新処理を行う
 def _update_task(request, task):
-    form = TaskForm(request.POST)
+    form = TaskForm(request.POST, instance=task)
     if not form.is_valid():
         return _render_edit_form(request, task, form)
-    services.task.update(task=task, form=form)
+    form.save()
     messages.success(request, 'タスクを更新しました。')
     return redirect('app:task_show', pk=task.pk)
 
