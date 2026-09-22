@@ -26,9 +26,9 @@ app/
     │   │   └── task_test.py
     │   ├── forms/
     │   ├── views/
-    │   ├── validators/
     │   ├── permissions/
     │   └── lib/
+    │       └── validators/
     └── e2e/                     # E2Eテスト(機能ごとにファイル分割)
         ├── __init__.py
         ├── conftest.py          # E2E専用のフィクスチャ

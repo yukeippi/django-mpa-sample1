@@ -20,7 +20,7 @@
 
 ### File Structure Rules
 
-models、forms、views、validators、tests、templatesはディレクトリ化し、機能ごとにファイル分割してください。検証ロジックがForm/Validator/View/DB制約のどこに属するかはValidation Rulesを参照。
+models、forms、views、lib、tests、templatesはディレクトリ化し、機能ごとにファイル分割してください。検証ロジックがForm/Validator/View/DB制約のどこに属するかはValidation Rulesを参照。
 
 Djangoが標準で持たないレイヤー(`services/`、`selectors/`のような独自ディレクトリ)は既定では作らない。読み書きの置き場所はDjango本来の位置、すなわちmodel・form・viewに寄せる(View Write Rules/QuerySet Rules参照)。
 
@@ -28,16 +28,16 @@ Djangoが標準で持たないレイヤー(`services/`、`selectors/`のよう�
 - models/todo.py
 - views/todo.py
 - forms/todo.py
-- validators/todo.py
+- lib/validators/todo.py
 - tests/unit/models/todo_test.py
 - tests/unit/forms/todo_test.py
 - tests/unit/views/todo_test.py
-- tests/unit/validators/todo_test.py
+- tests/unit/lib/validators/todo_test.py
 - tests/e2e/todo_test.py
 
 各ディレクトリに__init__.pyを配置すること。
 
-`tests/unit/`配下は、ソース側の`models/`, `forms/`, `views/`, `validators/`, `lib/`と対応するレイヤーごとのディレクトリにさらに分割する(Railsの`test/models/`, `test/controllers/`に相当)。`app/lib/`(`auth.py`/`permissions.py`等、app内で共有するロジック。詳細はCommon Module Rulesを参照)のテストも同様に`tests/unit/lib/`に置く(例: `tests/unit/lib/auth_test.py`)。`app/rules/`(役割はRules Directory Rulesを参照)は単純な定義の並びであることが多く、分岐ロジックが生じた場合のみテストディレクトリを追加する。`tests/e2e/`はページ単位のテストのため、このレイヤー分割は行わない。
+`tests/unit/`配下は、ソース側の`models/`, `forms/`, `views/`, `lib/`と対応するレイヤーごとのディレクトリにさらに分割する(Railsの`test/models/`, `test/controllers/`に相当)。`app/lib/`(`auth.py`/`validators/`等、app内で共有するロジック。詳細はCommon Module Rulesを参照)のテストも同様に`tests/unit/lib/`に置き、`app/lib/`内でディレクトリを切っている場合はその構造も反映する(例: `tests/unit/lib/auth_test.py`、`tests/unit/lib/validators/todo_test.py`)。`app/rules/`(役割はRules Directory Rulesを参照)は単純な定義の並びであることが多く、分岐ロジックが生じた場合のみテストディレクトリを追加する。`tests/e2e/`はページ単位のテストのため、このレイヤー分割は行わない。
 
 ### Common Module Rules
 
@@ -45,7 +45,7 @@ Djangoが標準で持たないレイヤー(`services/`、`selectors/`のよう�
 
 `app/lib/`は、`models/`/`views/`/`forms/`のいずれにも属さない補助的なコードの置き場である。業務ロジック(モデルへの書き込みを伴う処理)は`app/lib/`に置かず、その操作を行うviewに置く(View Write Rules参照)。
 
-- **1つのアプリ内で共有**: `app/lib/` に置く(Railsの`lib/`相当)。`urls.py`/`apps.py`/`admin.py`のような、Djangoの規約でアプリ直下に置くと決まっているファイルはそのままアプリ直下に残し、開発者が追加した「app内で共有するロジック」だけを`app/lib/`にまとめる。役割ごとにファイルを分ける: 認証(ログイン等、誰であるかの検証)は`app/lib/auth.py`、汎用ユーティリティは`app/lib/utils.py`(増えてきたら`app/lib/utils/`ディレクトリ化し、関心事ごとにファイル分割する。例: `utils/date.py`)。ナビゲーションバー・フラッシュメッセージ表示のような特定のモデルに属さないパーシャルテンプレート(`app/templates/common/`)も同じ考え方で、このアプリ専用の置き場に置く。「複数アプリ間で共有」に見えても、実際に共有先の別アプリが存在しない限りは、このアプリ内に留める。バリデーション(Pure Function)や権限判定は補助的な共有コードではなく`app/validators/`・`app/permissions/`という同列の層として最初から扱う(Validator Rules参照)。
+- **1つのアプリ内で共有**: `app/lib/` に置く(Railsの`lib/`相当)。`urls.py`/`apps.py`/`admin.py`のような、Djangoの規約でアプリ直下に置くと決まっているファイルはそのままアプリ直下に残し、開発者が追加した「app内で共有するロジック」だけを`app/lib/`にまとめる。役割ごとにファイルを分ける: 認証(ログイン等、誰であるかの検証)は`app/lib/auth.py`、汎用ユーティリティは`app/lib/utils.py`(増えてきたら`app/lib/utils/`ディレクトリ化し、関心事ごとにファイル分割する。例: `utils/date.py`)。ナビゲーションバー・フラッシュメッセージ表示のような特定のモデルに属さないパーシャルテンプレート(`app/templates/common/`)も同じ考え方で、このアプリ専用の置き場に置く。「複数アプリ間で共有」に見えても、実際に共有先の別アプリが存在しない限りは、このアプリ内に留める。検証ロジック(Pure Function)も例外ではなく`app/lib/validators/`に置く(Validator Rules参照)。`app/permissions/`のようにトップレベルへ出ているものは、下記の昇格を経た結果であり、最初からそこに作るという意味ではない。
   - 例外: `app/management/commands/`(Djangoがこの場所を前提にコマンドを自動検出する)と`app/seeds/`(Seed Data Rules参照、モデルごとのデータ生成スクリプト群という別カテゴリ)は`app/lib/`に含めない。
   - **`app/lib/`配下のモジュールが肥大化した場合の昇格**: 関心事が独立したサブシステムと呼べる規模になった場合、`app/permissions/`のように`models/`/`views/`/`forms/`等と同列のトップレベルディレクトリへ昇格してよい。昇格後は他のトップレベルディレクトリと同じ構成規則(ディレクトリ化・`__init__.py`配置・テストディレクトリの対応)に従う。
 - **複数アプリ間で共有**: `app/` と同列に共有専用アプリ `common/` を作り、`INSTALLED_APPS` に登録して置く。これは実際に2つ以上のアプリから使われるようになった時点で行う。
@@ -66,11 +66,11 @@ app/
 ├── models/                  # 永続化・状態判定
 ├── views/                   # HTTPの入出力・モデルへの書き込み(View Write Rules参照)
 ├── forms/                   # 入力検証(画面単位。Validation Rules参照)
-├── validators/              # Pure Functionの検証ロジック(Validator Rules参照)
 ├── rules/                   # Form/Validatorが共有する形式的制約(Rules Directory Rules参照)
 ├── lib/                     # 上記のどれにも属さない、app内で共有するコード
 │   ├── __init__.py
 │   ├── auth.py              # 認証ロジック(ログイン等、誰であるかの検証)
+│   ├── validators/          # Pure Functionの検証ロジック(Validator Rules参照)
 │   └── utils.py             # 汎用ユーティリティ
 └── templates/
     └── common/              # appアプリ内で共有するパーシャルテンプレート
@@ -209,7 +209,7 @@ class Command(BaseCommand):
 
 検証は1箇所に集約せず、判断できるタイミングごとに3段階へ分ける。同じチェックをどの段階にも重複して書かない。
 
-1. **Form(画面単位)**: 画面から入力される値に関する検証はここに集約する。ModelFormを使うため、`max_length`・`unique=True`・`Meta.constraints`の`UniqueConstraint`といったモデル由来の検証は`full_clean()`経由で自動的にこの段階に含まれる。**書く必要があるのは、自動で導出されないものだけ**。すなわち、単一フィールドの形式チェック(`clean_<field>()`)と、複数フィールドが揃って初めて判断できる業務ルール(`clean()`)である。再利用したい判定は`app/validators/`のPure Functionを呼ぶ(Form Rules/Validator Rules参照)
+1. **Form(画面単位)**: 画面から入力される値に関する検証はここに集約する。ModelFormを使うため、`max_length`・`unique=True`・`Meta.constraints`の`UniqueConstraint`といったモデル由来の検証は`full_clean()`経由で自動的にこの段階に含まれる。**書く必要があるのは、自動で導出されないものだけ**。すなわち、単一フィールドの形式チェック(`clean_<field>()`)と、複数フィールドが揃って初めて判断できる業務ルール(`clean()`)である。再利用したい判定は`app/lib/validators/`のPure Functionを呼ぶ(Form Rules/Validator Rules参照)
 2. **ユースケース検証(View)**: **フォームを伴わない操作**の事前条件。「完了にする」「承認する」のように、画面からの入力ではなく対象の現在状態によって可否が決まるもの。viewの書き込みヘルパーが`django.core.exceptions.ValidationError`を`code`付きで送出し、呼び出し側が受けて`messages.error()`に渡す(View Write Rules参照)
 3. **DB制約(最終防衛)**: `unique=True`/`Meta.constraints`(`UniqueConstraint`/`CheckConstraint`)など、DB自身が保証できる不変条件だけを書く。Modelに独自の`clean()`は実装しない(禁止。下記「Model(第3段階): 禁止事項」参照)
 
@@ -356,9 +356,9 @@ def _create_task(request):
 
 ### Validator Rules
 
-複数のFormフィールド・複数モデルで使い回したい検証ロジックは、Formやモデルファイルに直接書かず`app/validators/`に置く。ValidatorはPure Functionとする。
+複数のFormフィールド・複数モデルで使い回したい検証ロジックは、Formやモデルファイルに直接書かず`app/lib/validators/`に置く。ValidatorはPure Functionとする。
 
-- **配置**: 関心事ごとに`app/validators/<concern>.py`(複数モデルで共有する形式チェック等)、または単一モデルに強く紐づく場合は`app/validators/<model>.py`に置く
+- **配置**: 関心事ごとに`app/lib/validators/<concern>.py`(複数モデルで共有する形式チェック等)、または単一モデルに強く紐づく場合は`app/lib/validators/<model>.py`に置く
 - **Pure Functionの契約**: ORM/DBを呼ばない。viewを呼ばない。`request`/`Form`インスタンスに依存しない。値を1つ受け取り、問題がなければ何も返さず、失敗時に`django.core.exceptions.ValidationError`を送出する(Djangoのvalidatorの標準的な形)
 - **`code`を必ず付ける**: `ValidationError('文言', code='...')`のように、文言と併せて識別子を渡す。どのルールで落ちたかをテストや構造化ログから判別できるようにするため
 - **DB状態が必要な検証は対象外**: 重複チェックのようにDBを読む必要がある検証はPure Validatorではない。モデルの制約として宣言し、ModelFormに検証させる(Validation Rules参照)
@@ -367,7 +367,7 @@ def _create_task(request):
 #### Example
 
 ```python
-# app/validators/employee.py
+# app/lib/validators/employee.py
 import re
 from django.core.exceptions import ValidationError
 from app.rules.employee import EMPLOYEE_NUMBER_REGEX
@@ -380,7 +380,7 @@ def validate_employee_number_format(value: str) -> None:
 ```
 
 ```python
-# app/validators/__init__.py
+# app/lib/validators/__init__.py
 from . import employee
 
 __all__ = ['employee']
@@ -391,7 +391,7 @@ __all__ = ['employee']
 Validator(Pure Function)とviewのユースケース検証(Validation Rules参照)の両方から参照したい、DBに依存しない形式的な制約(正規表現・桁数などの定数)は`app/rules/`にまとめる。同じ正規表現が複数箇所に二重に書かれることを防ぐ。
 
 - **配置**: 単一モデルにのみ関係する制約は`app/rules/<model>.py`、複数モデルで共有する制約は関心事ごとのファイル(`app/rules/format.py`等)に置く
-- **`app/validators/`(Validator Rules)との違い**: `app/rules/`は正規表現・定数などのDjango非依存の値だけを持つ。`app/validators/`はその定数を使って実際に判定し、失敗時に`ValidationError`を送出するPure Functionを置く場所
+- **`app/lib/validators/`(Validator Rules)との違い**: `app/rules/`は正規表現・定数などのDjango非依存の値だけを持つ。`app/lib/validators/`はその定数を使って実際に判定し、失敗時に`ValidationError`を送出するPure Functionを置く場所
 - **DBを参照しない**: 純粋な定数・正規表現に限る。DBを参照する検証はValidation Rulesに従う
 
 #### Example
@@ -407,7 +407,7 @@ EMPLOYEE_NUMBER_REGEX = r'^E\d{4}$'
 # app/forms/employee.py
 from django import forms
 from app.models import Employee
-from app.validators.employee import validate_employee_number_format
+from app.lib.validators.employee import validate_employee_number_format
 
 
 class EmployeeForm(forms.ModelForm):
@@ -1180,10 +1180,10 @@ class TestTaskComplete:
 テストの置き場所はFile Structure Rulesに従う。**何をどの層で検証するかは、その仕様を決めている層に合わせる。** 同じ仕様を複数の層で重複して検証しない。重複すると、仕様を1つ変えたときに複数のテストが同時に落ち、どれが本体の仕様なのかが分からなくなる。
 
 - **models/**: フィールドのデフォルト値、`Meta.constraints`(DB制約が実際に効くこと)、カスタムQuerySetの絞り込み条件、自身の属性だけで判定する状態判定メソッド(Validation Rules/QuerySet Rules参照)
-- **validators/**: Pure Functionの正常系と、失敗時に送出される`ValidationError`の`code`(Validator Rules参照)
-- **forms/**: 画面の入力契約。`fields`に出している項目、妥当な入力が通ること、業務ルール違反の入力で`form.errors`に想定の文言が出ること。validatorの網羅はvalidators/で済んでいるため、ここでは「フォームに繋がっていること」を1ケース確認するに留める
+- **lib/validators/**: Pure Functionの正常系と、失敗時に送出される`ValidationError`の`code`(Validator Rules参照)
+- **forms/**: 画面の入力契約。`fields`に出している項目、妥当な入力が通ること、業務ルール違反の入力で`form.errors`に想定の文言が出ること。validatorの網羅は`lib/validators/`で済んでいるため、ここでは「フォームに繋がっていること」を1ケース確認するに留める
 - **views/**: 1リクエストの結果として外から観測できること。ステータスコード、リダイレクト先、`response.context`の内容、DBの変化、`messages`、権限による403/404の切り分け(Read Rules/View Write Rules参照)
-- **lib/**: 入力に対する戻り値。DBやHTTPに依存しない純粋なロジックとして検証する
+- **lib/**: 入力に対する戻り値を、関数・クラスを直接呼んで検証する。`app/lib/`はDBを「変更しない」補助ロジックの置き場であり(Common Module Rules参照)、読み取りは行いうるため、必要なら`pytest.mark.django_db`を付けてよい。DBを一切呼ばない契約が求められるのは`lib/validators/`の方(Validator Rules参照)。`request`やテストクライアントは使わない。ここで直接呼ぶのは公開されたモジュール間インターフェースであり、`_`始まりの実装詳細とは別物である(Function Signature Rules参照)
 - **e2e/**: 画面をまたぐ主要な導線を、ページ単位で1経路ずつ。実行が遅く壊れやすいため、ユニットテストで検証済みの分岐をE2Eで再検証しない
 
 #### Example
@@ -1191,7 +1191,7 @@ class TestTaskComplete:
 「識別子の形式」という1つの仕様を、層をまたいで重複させない書き分け。
 
 ```python
-# tests/unit/validators/employee_test.py — 形式の仕様はここで網羅する
+# tests/unit/lib/validators/employee_test.py — 形式の仕様はここで網羅する
 def test_validate_identifier_format_rejects_lowercase_prefix():
     with pytest.raises(ValidationError) as error:
         validate_identifier_format('e0001')

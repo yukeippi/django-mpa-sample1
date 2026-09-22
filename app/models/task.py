@@ -13,7 +13,7 @@ class Task(models.Model):
 
     title = models.CharField(max_length=200, verbose_name='タイトル')
     # 説明に関連するIssue番号(#123のような形式)を含めることを求める形式チェックは
-    # app/validators/task.pyのPure Function(Form経由)で行う(Validator Rules参照)
+    # app/lib/validators/task.pyのPure Function(Form経由)で行う(Validator Rules参照)
     description = models.TextField(blank=True, verbose_name='説明')
     status = models.CharField(
         max_length=20,

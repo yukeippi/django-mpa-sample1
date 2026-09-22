@@ -1,6 +1,6 @@
 from django import forms
 from app.models import Task
-from app.validators.task import validate_description_contains_issue_reference
+from app.lib.validators.task import validate_description_contains_issue_reference
 
 
 # タスクの新規作成・編集で使うフォーム
