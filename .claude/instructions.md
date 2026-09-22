@@ -1050,7 +1050,7 @@ class Task(models.Model):
 実装前に提示する仕様の箇条書き(例: あるモデルの「完了」操作)。
 
 ```
-- 未完了のものを完了にできる
+- 未完了のものを完了にでき、詳細ページにリダイレクトされる
 - 完了すると完了日時が記録される
 - 完了すると履歴が1件作成される
 - 既に完了しているものは完了にできない(エラーメッセージを表示し、状態は変わらない)
@@ -1172,35 +1172,47 @@ class TestTaskComplete:
 - **forms/**: 画面の入力契約。`fields`に出している項目、妥当な入力が通ること、業務ルール違反の入力で`form.errors`に想定の文言が出ること。validatorの網羅は`lib/validators/`で済んでいるため、ここでは「フォームに繋がっていること」を1ケース確認するに留める
 - **views/**: 1リクエストの結果として外から観測できること。ステータスコード、リダイレクト先、`response.context`の内容、DBの変化、`messages`、権限による403/404の切り分け(Read Rules/View Write Rules参照)
 - **lib/**: 入力に対する戻り値を、関数・クラスを直接呼んで検証する。`app/lib/`はDBを「変更しない」補助ロジックの置き場であり(Common Module Rules参照)、読み取りは行いうるため、必要なら`pytest.mark.django_db`を付けてよい。DBを一切呼ばない契約が求められるのは`lib/validators/`の方(Validator Rules参照)。`request`やテストクライアントは使わない。ここで直接呼ぶのは公開されたモジュール間インターフェースであり、`_`始まりの実装詳細とは別物である(Function Signature Rules参照)
+- **昇格したトップレベルディレクトリ**(Common Module Rules参照): 昇格前と同じく、公開インターフェースを直接呼んで、戻り値と送出される例外を検証する
 - **e2e/**: 画面をまたぐ主要な導線を、ページ単位で1経路ずつ。実行が遅く壊れやすいため、ユニットテストで検証済みの分岐をE2Eで再検証しない
 
 #### Example
 
-「識別子の形式」という1つの仕様を、層をまたいで重複させない書き分け。
+「社員番号の形式」という1つの仕様を、層をまたいで重複させない書き分け。
 
 ```python
 # tests/unit/lib/validators/employee_test.py — 形式の仕様はここで網羅する
-def test_validate_identifier_format_rejects_lowercase_prefix():
+
+# 規定の形式に合う社員番号は受け付ける
+def test_validate_employee_number_format_accepts_valid_value():
+    validate_employee_number_format('E0001')
+
+
+# プレフィックスが小文字の社員番号は拒否し、codeで識別できる
+def test_validate_employee_number_format_rejects_lowercase_prefix():
     with pytest.raises(ValidationError) as error:
-        validate_identifier_format('e0001')
-    assert error.value.code == 'invalid_identifier_format'
+        validate_employee_number_format('e0001')
+    assert error.value.code == 'invalid_employee_number_format'
 ```
 
 ```python
 # tests/unit/forms/employee_test.py — validatorが繋がっていることだけを1ケース確認する
+
+# 形式違反の社員番号はフォームのエラーになる(形式のパターン網羅はvalidators側で行う)
 @pytest.mark.django_db
-def test_form_rejects_invalid_identifier_format():
-    form = EmployeeForm({'identifier': 'INVALID'})
+def test_form_rejects_invalid_employee_number_format():
+    form = EmployeeForm({'employee_number': 'INVALID'})
     assert not form.is_valid()
-    assert 'identifier' in form.errors
+    assert 'employee_number' in form.errors
 ```
 
 ```python
 # tests/unit/views/employee_test.py — 形式違反のパターンは扱わない。
 # viewが保証するのは「検証に失敗したら作成されず、フォームが再表示される」こと
+
+# 入力が検証に失敗した場合、レコードは作成されずフォームが再表示される
 @pytest.mark.django_db
 def test_create_with_invalid_input_does_not_create_record(auth_client):
-    response = auth_client.post('/employees/new/', {'identifier': 'INVALID'})
+    response = auth_client.post('/employees/new/', {'employee_number': 'INVALID'})
 
     assert response.status_code == 200
     assert not Employee.objects.exists()
