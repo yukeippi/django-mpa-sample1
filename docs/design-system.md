@@ -4,7 +4,7 @@ Task Manager 管理画面(タスク・社員・会社・部門・管理グルー
 淡いグレーの背景に白いカードを載せ、左サイドバーと青のアクセントで構成するダッシュボード調のデザイン。
 参考にしたスクリーンショットから色・寸法・部品を実測して定義している(スクリーンショット自体はリポジトリに含めない)。
 
-- **実装状況**: アプリ本体に適用済み。CSSは `app/static/app/common.css`(Bootstrapは読み込まない)、シェルは `layouts/default.html` + `common/_sidebar.html` + `common/_topbar.html`、ログイン画面は `layouts/auth.html`。見本HTMLは同じCSSを直接読み込む。
+- **実装状況**: アプリ本体に適用済み。CSSは `app/static/app/common.css`(BootstrapのCSSは読み込まない。JSはモーダルの開閉にだけ使う)、シェルは `layouts/default.html` + `common/_sidebar.html` + `common/_topbar.html`、ログイン画面は `layouts/auth.html`。見本HTMLは同じCSSを直接読み込む。
 
 ## 「このデザインで」と指示されたら(AIエージェント向け)
 
@@ -12,21 +12,38 @@ Task Manager 管理画面(タスク・社員・会社・部門・管理グルー
 
 | ファイル | 内容 |
 |---|---|
+| [`component-catalog.md`](component-catalog.md) | 作成済みUIコンポーネントの一覧。**部品を探すときは最初にここを見る** |
 | [`app/static/app/common.css`](../app/static/app/common.css) | 全トークン(`--ds-*`)と全コンポーネントのクラス(`ds-*`)の実装。**クラス名・値はここが唯一の正** |
 | [`design-system/index.html`](design-system/index.html) | トップページの見本(カードを並べるダッシュボード構成・ドーナツチャート・凡例) |
 | [`design-system/list.html`](design-system/list.html) | 一覧画面の見本(フラッシュメッセージ・ページヘッダー・テーブル・ステータス表示・空状態) |
 | [`design-system/detail.html`](design-system/detail.html) | 詳細画面の見本(アクション3種・項目リスト) |
 | [`design-system/form.html`](design-system/form.html) | フォーム画面の見本(入力・エラー表示・送信ボタン) |
+| [`design-system/modal.html`](design-system/modal.html) | モーダルの見本(削除確認・短いフォーム。詳細画面の上で開く) |
 
 ルール:
 
-1. 新しい画面は、見本のマークアップと `common.css` の `ds-*` クラスだけで組み立てる。Bootstrapのクラスや独自のインラインスタイル、新しい色・影・角丸・フォントサイズは足さない(例外: チャートの割合を表す `conic-gradient` のみインライン指定)。
+1. 新しい画面は、見本のマークアップと `common.css` の `ds-*` クラスだけで組み立てる。Bootstrapのクラスや独自のインラインスタイル、新しい色・影・角丸・フォントサイズは足さない(例外: チャートの割合を表す `conic-gradient` のみインライン指定。Bootstrap の JS で動かす部品では、JS が要求するクラス(モーダルの `modal` `fade` `modal-dialog` など)を `ds-*` と併記する)。
 2. 画面の種類(トップ/一覧/詳細/フォーム)に対応する見本を選び、そのHTML構造をそのままテンプレートに写す。サイドバー+トップバーのシェルは全画面で共通。Djangoのテンプレートタグは見本の文言・値の部分だけに使う。
-3. 見本にないパターンが必要なときは、勝手に作らずユーザーに確認する。承認されたら `common.css` と見本HTMLに追加してから使う。
+3. カタログ・見本にない部品が必要なときは、下の「UIコンポーネントを追加するとき」の手順に従う。見本に追加してユーザーの承認を得るまで、アプリの画面では使わない。
 4. 見本はブラウザで開ける。CSSを `../../app/static/app/common.css` で参照しているため、リポジトリのルートで `python3 -m http.server` を起動し、`/docs/design-system/list.html` などを開く。
 5. テストが依存するフック(`id` 属性、フラッシュメッセージの `.messages`、行の `.<model>-row` など)は、デザインを変えても残す。
 
-主なクラス: `ds-page`(body) / `ds-app` `ds-sidebar` `ds-brand` `ds-nav-label` `ds-nav-item` `ds-topbar` `ds-user` `ds-avatar` `ds-main` `ds-content` / `ds-icon ds-icon--*` / `ds-page-header` `ds-h1` `ds-actions` / `ds-card` (+ `--flush` `--narrow`) `ds-card-header` `ds-card-title` / `ds-grid` (+ `--main-side`) / `ds-btn` + `ds-btn-primary|danger` (+ `ds-btn-sm`) / `ds-status` (+ `--progress|--done|--danger`) / `ds-alert` + `--success|--error` `ds-empty` / `ds-form` `ds-field` `ds-label` `ds-input` (+ `--error`) `ds-field-error` / `ds-table` / `ds-detail*` / `ds-donut*` `ds-legend`
+### UIコンポーネントを追加するとき
+
+モーダル・ドロップダウン・タブのような部品が必要になったら、次の順に探す。
+
+1. **カタログを見る。** [`component-catalog.md`](component-catalog.md) にあれば、それをそのまま使う(新しく作らない)。足りない機能があるときは、その部品を拡張する形で 2〜3 の手順に進む。
+2. **カタログになければ、Bootstrap 5(`static/vendor/bootstrap/` の同梱版、v5.3.3)に同じ機能があるか確認する。** ある場合は Bootstrap の仕組みを使う。
+   - 開閉などの動きは `bootstrap.bundle.min.js` と `data-bs-*` 属性に任せ、同じ動きを自前で書かない。
+   - Bootstrap の CSS は読み込まない。見た目は `common.css` に `ds-*` クラスとして定義し、JS が要求するクラスは `ds-*` と併記する。
+   - サイズなどのバリエーションは Bootstrap の段階と値に合わせる(例: モーダルの幅 `--sm` / 標準 / `--lg` / `--xl`)。
+3. **Bootstrap にもなければ、自前で作って提案する。**
+   - Bootstrap の部品で足りない部分(例: モーダルのドラッグ移動)も含む。
+   - スクリプトは `app/static/app/<部品名>.js`、見た目は `common.css` に置く。
+   - ユーザーには、カタログと Bootstrap に無いことを確認した旨と、作ったものを報告する。
+4. **2・3 のどちらの場合も、`common.css`・見本HTML・本ドキュメントに追加し、カタログに1行追加する。** ユーザーが見本で確認して承認してから画面に使う。
+
+主なクラス: `ds-page`(body) / `ds-app` `ds-sidebar` `ds-brand` `ds-nav-label` `ds-nav-item` `ds-topbar` `ds-user` `ds-avatar` `ds-main` `ds-content` / `ds-icon ds-icon--*` / `ds-page-header` `ds-h1` `ds-actions` / `ds-card` (+ `--flush` `--narrow`) `ds-card-header` `ds-card-title` / `ds-grid` (+ `--main-side`) / `ds-btn` + `ds-btn-primary|danger` (+ `ds-btn-sm`) / `ds-status` (+ `--progress|--done|--danger`) / `ds-alert` + `--success|--error` `ds-empty` / `ds-form` `ds-field` `ds-label` `ds-input` (+ `--error`) `ds-field-error` / `ds-table` / `ds-detail*` / `ds-modal` `ds-modal-dialog` (+ `--sm` `--lg` `--xl`) `ds-modal-content` `ds-modal-header` `ds-modal-title` `ds-modal-close` `ds-modal-body` `ds-modal-footer` / `ds-donut*` `ds-legend`
 
 ## 原則
 
@@ -125,6 +142,32 @@ secondary を白抜きにしないのは、青・赤の塗りつぶしボタン�
 ### 詳細表示
 
 `ds-card ds-card--flush` の中に `ds-detail`(dl)。項目名(14px、`muted`、コロンなし)の下に値(500)を積み、項目間を `line` の罫線で区切る。値が空のときは「なし」「未割り当て」など。
+
+### モーダル
+
+開閉は Bootstrap 5 の modal.js(`static/vendor/bootstrap/js/bootstrap.bundle.min.js`)に任せ、開閉の動き(上から滑り込むフェード、Escキー・背景クリックで閉じる、フォーカスの閉じ込め、背面スクロールの停止)を Bootstrap と同じにする。Bootstrap の CSS は読み込まないので、見た目は `common.css` の `ds-modal*` で定義している。白いパネル(幅は下表、画面上部から30px、角丸12px、影なし)を、`ink` を45%の不透明度にした背景に重ねる。
+
+- マークアップ: `div.modal.fade.ds-modal`(`tabindex="-1"`、`aria-labelledby` でタイトルに結び付ける)> `div.modal-dialog.ds-modal-dialog` > `form.ds-modal-content` > `ds-modal-header`(`ds-modal-title` の h2 + 右端の × `ds-modal-close`)→ `ds-modal-body` → `ds-modal-footer`(右寄せ、上に `line` の罫線)。
+- `modal` `fade` `modal-dialog` は Bootstrap の JS が探すクラスなので、`ds-*` と併記する(見た目は付かない)。背景として Bootstrap が生成する `modal-backdrop` だけは、`common.css` でそのクラス名のまま見た目を定義している。
+- 開くボタンは `<button type="button" data-bs-toggle="modal" data-bs-target="#<id>">`。× とキャンセルは `<button type="button" data-bs-dismiss="modal">` にして、送信せずに閉じる。開閉のために独自のスクリプトは書かない。
+- 幅は `ds-modal-dialog` に修飾クラスを併記して変える(値は Bootstrap の `modal-sm` / 標準 / `modal-lg` / `modal-xl` と同じ)。画面が狭いときは画面幅に合わせて縮む。
+
+  | クラス | 最大幅 | 目安 |
+  |---|---|---|
+  | `ds-modal-dialog--sm` | 300px | 1文だけの確認 |
+  | (無指定) | 500px | 確認・短いフォーム(既定) |
+  | `ds-modal-dialog--lg` | 800px | 表や長めの本文を見せる |
+  | `ds-modal-dialog--xl` | 1140px | 一覧を丸ごと見せる |
+
+- ヘッダー(`ds-modal-header`)をドラッグするとモーダルを移動できる(`app/static/app/modal.js`、カーソルは移動の形)。× ボタンの上ではドラッグしない。ヘッダーが画面の外に出ない範囲で動かせ、閉じると元の位置に戻る。
+- フッターのボタン順はページと同じく secondary「キャンセル」→ primary/danger。
+
+| 種類 | 用途 | 中身 |
+|---|---|---|
+| 確認 | 削除など取り消せない操作の最終確認 | 本文は1〜2文(例「「資料作成」を削除します。この操作は取り消せません。」)。実行ボタンは danger |
+| フォーム | 1〜3項目の短い入力(ステータス変更など) | 本文に `ds-form` を置く。エラー表示はフォーム画面と同じ。項目がそれ以上になる場合はモーダルにせずフォーム画面にする |
+
+モーダルを重ねて開かない。成功時の結果は、これまでどおり送信後のリダイレクト先でフラッシュメッセージとして表示する。アプリの画面で使うときは、`layouts/default.html` で `bootstrap.bundle.min.js` と `app/modal.js` をこの順に読み込む(現状は未読み込み)。
 
 ### ページヘッダー
 
