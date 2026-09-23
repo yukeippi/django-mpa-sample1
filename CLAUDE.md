@@ -92,6 +92,10 @@ mypy app common config
 
 開発フェーズに応じた方針(既存実装への追従度合いなど)は [.claude/development-phase.md](.claude/development-phase.md) を参照してください。
 
+### 画面・UIコンポーネント
+
+画面やUIコンポーネント(モーダルなど)を作る・変えるときは、[docs/design-system.md](docs/design-system.md) と見本HTMLに従うこと。部品は、まず [docs/component-catalog.md](docs/component-catalog.md)(作成済み部品のカタログ)から探し、なければ design-system.md の「UIコンポーネントを追加するとき」の手順(Bootstrapに機能があれば使い、なければ作って提案する)に従うこと。
+
 ### 判断の報告
 
 `.claude/instructions.md` に答えの無い判断をした場合、その場で決めて進めず、次を報告すること。

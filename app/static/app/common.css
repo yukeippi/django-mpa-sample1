@@ -1,6 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap");
 
-/* 管理画面デザインシステム(ダッシュボード・ブルー)。仕様は ../design-system.md を参照。
+/* 管理画面デザインシステム(ダッシュボード・ブルー)。仕様は docs/design-system.md、作成済み部品の一覧は docs/component-catalog.md を参照。
    クラスはすべて ds- 接頭辞。ページ全体を <body class="ds-page"> で包んで使う。
    フォントサイズは Bootstrap 5 の標準スケール(rem)に合わせている(html の基準は 16px)。 */
 
@@ -230,8 +230,8 @@
   color: var(--ds-danger-text); background: var(--ds-danger-bg); border-color: var(--ds-danger-border);
 }
 .ds-alert-message { flex: 1; }
-.ds-alert-close { width: 24px; height: 24px; padding: 0; color: inherit; background: none; border: 0; cursor: pointer; }
-.ds-alert-close::before {
+.ds-alert-close, .ds-modal-close { width: 24px; height: 24px; padding: 0; color: inherit; background: none; border: 0; cursor: pointer; }
+.ds-alert-close::before, .ds-modal-close::before {
   content: ""; display: block; width: 16px; height: 16px; margin: auto; background: currentColor;
   -webkit-mask: var(--ds-icon-close) center / contain no-repeat;
   mask: var(--ds-icon-close) center / contain no-repeat;
@@ -324,6 +324,54 @@ select.ds-input[multiple] { padding-right: 12px; background-image: none; }
 .ds-auth-card { width: 100%; max-width: 400px; }
 .ds-auth-card .ds-brand { justify-content: center; padding: 0; margin-bottom: 24px; }
 
+/* ---- モーダル(Bootstrap 5 の modal.js で開閉する。Bootstrap の CSS は読み込まないため、JS が使うクラスの見た目をここで定義する) ---- */
+.ds-modal {
+  position: fixed; top: 0; left: 0; z-index: 1055; display: none;
+  width: 100%; height: 100%; overflow-x: hidden; overflow-y: auto; outline: 0;
+}
+.ds-modal-dialog {
+  position: relative; width: calc(100% - 60px); max-width: var(--ds-modal-width, 500px);
+  margin: 30px auto; pointer-events: none;
+}
+/* 幅は Bootstrap の modal-sm / 標準 / modal-lg / modal-xl と同じ */
+.ds-modal-dialog--sm { --ds-modal-width: 300px; }
+.ds-modal-dialog--lg { --ds-modal-width: 800px; }
+.ds-modal-dialog--xl { --ds-modal-width: 1140px; }
+.ds-modal-content {
+  display: flex; flex-direction: column; pointer-events: auto;
+  color: var(--ds-ink); background: var(--ds-surface); border-radius: var(--ds-radius-card);
+}
+.ds-modal-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 20px 24px 0; }
+/* ヘッダーをドラッグしてモーダルを動かせる(modal.js) */
+.ds-modal-header { cursor: move; touch-action: none; user-select: none; }
+.ds-modal-close { flex-shrink: 0; color: var(--ds-muted); border-radius: var(--ds-radius-control); }
+.ds-modal-close:hover { color: var(--ds-ink); }
+.ds-modal-close:focus-visible { outline: none; box-shadow: var(--ds-primary-ring); }
+.ds-modal-title { margin: 0; font-size: var(--ds-fs-h5); font-weight: 600; }
+.ds-modal-body { padding: 16px 24px 24px; }
+.ds-modal-body > p { margin: 0; }
+.ds-modal-body > .ds-form { max-width: none; }
+.ds-modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 24px; border-top: 1px solid var(--ds-line); }
+
+/* 開閉のアニメーション(値は Bootstrap 5 と同じ) */
+.ds-modal.fade { transition: opacity 0.15s linear; }
+.ds-modal.fade:not(.show) { opacity: 0; }
+.ds-modal.fade .ds-modal-dialog { transition: transform 0.3s ease-out; transform: translate(0, -50px); }
+.ds-modal.show .ds-modal-dialog { transform: none; }
+.ds-modal.modal-static .ds-modal-dialog { transform: scale(1.02); }
+
+/* 背景(Bootstrap が body 直下に生成する) */
+.modal-backdrop {
+  position: fixed; top: 0; left: 0; z-index: 1050;
+  width: 100vw; height: 100vh; background: var(--ds-ink);
+}
+.modal-backdrop.fade { opacity: 0; transition: opacity 0.15s linear; }
+.modal-backdrop.show { opacity: 0.45; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-modal.fade, .ds-modal.fade .ds-modal-dialog, .modal-backdrop.fade { transition: none; }
+}
+
 /* ---- 狭い画面 ---- */
 @media (max-width: 900px) {
   .ds-app { grid-template-columns: minmax(0, 1fr); }
@@ -336,4 +384,5 @@ select.ds-input[multiple] { padding-right: 12px; background-image: none; }
   .ds-topbar { padding: 0 16px; }
   .ds-content { padding: 16px; }
   .ds-grid--main-side { grid-template-columns: minmax(0, 1fr); }
+  .ds-modal-dialog { width: calc(100% - 32px); margin: 16px auto; }
 }

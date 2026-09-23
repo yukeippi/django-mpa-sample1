@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>資料作成</title>
+    <link rel="stylesheet" href="../../app/static/app/common.css">
+</head>
+<!-- モーダルの見本。詳細画面(detail.html)の上で、削除確認とフォームの2種類のモーダルを開く。 app/static/app/common.css の ds- クラスだけで構成する -->
+<body class="ds-page">
+    <div class="ds-app">
+        <aside class="ds-sidebar">
+            <a class="ds-brand" href="index.html"><span class="ds-brand-mark"><span class="ds-icon ds-icon--check"></span></span>Task Manager</a>
+            <div class="ds-nav-label">メニュー</div>
+            <nav class="ds-nav">
+                <a class="ds-nav-item" href="index.html"><span class="ds-icon ds-icon--home"></span>ホーム</a>
+                <a class="ds-nav-item" href="list.html" aria-current="page"><span class="ds-icon ds-icon--tasks"></span>タスク一覧</a>
+                <a class="ds-nav-item" href="#"><span class="ds-icon ds-icon--users"></span>社員一覧</a>
+                <a class="ds-nav-item" href="#"><span class="ds-icon ds-icon--building"></span>会社一覧</a>
+                <a class="ds-nav-item" href="#"><span class="ds-icon ds-icon--sitemap"></span>部門一覧</a>
+                <a class="ds-nav-item" href="#"><span class="ds-icon ds-icon--shield"></span>管理グループ一覧</a>
+            </nav>
+            <!-- ログアウトは POST フォームの button。見た目は ds-nav-item を button に適用する -->
+            <form class="ds-sidebar-footer" method="post" action="#">
+                <button type="submit" class="ds-nav-item"><span class="ds-icon ds-icon--logout"></span>ログアウト</button>
+            </form>
+        </aside>
+
+        <div class="ds-main">
+            <header class="ds-topbar">
+                <div class="ds-user"><span class="ds-avatar">Y</span>yamada(管理者)</div>
+            </header>
+
+            <main class="ds-content">
+                <div class="ds-page-header">
+                    <h1 class="ds-h1">資料作成</h1>
+                    <div class="ds-actions">
+                        <a href="list.html" class="ds-btn">一覧に戻る</a>
+                        <a href="form.html" class="ds-btn ds-btn-primary">編集</a>
+                        <!-- モーダルを開くボタンは button にし、data-bs-toggle="modal" と data-bs-target にモーダルの id を書く -->
+                        <button type="button" class="ds-btn ds-btn-danger" data-bs-toggle="modal" data-bs-target="#delete-modal">削除</button>
+                    </div>
+                </div>
+
+                <div class="ds-grid">
+                <div class="ds-card ds-card--flush ds-card--narrow">
+                    <dl class="ds-detail">
+                        <div class="ds-detail-item">
+                            <dt class="ds-detail-label">説明</dt>
+                            <dd class="ds-detail-value">四半期報告書の作成 #123</dd>
+                        </div>
+                        <div class="ds-detail-item">
+                            <dt class="ds-detail-label">ステータス</dt>
+                            <dd class="ds-detail-value ds-actions">
+                                <span class="ds-status">To Do</span>
+                                <button type="button" class="ds-btn ds-btn-sm" data-bs-toggle="modal" data-bs-target="#status-modal">変更</button>
+                            </dd>
+                        </div>
+                        <div class="ds-detail-item">
+                            <dt class="ds-detail-label">担当者</dt>
+                            <dd class="ds-detail-value">未割り当て</dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <!-- ここから下は幅の比較用(実際の画面には置かない) -->
+                <div class="ds-card ds-card--narrow ds-stack">
+                    <div class="ds-card-header">
+                        <h2 class="ds-card-title">モーダルの幅</h2>
+                    </div>
+                    <div class="ds-actions">
+                        <button type="button" class="ds-btn" data-bs-toggle="modal" data-bs-target="#size-sm-modal">sm(300px)</button>
+                        <button type="button" class="ds-btn" data-bs-toggle="modal" data-bs-target="#delete-modal">標準(500px)</button>
+                        <button type="button" class="ds-btn" data-bs-toggle="modal" data-bs-target="#size-lg-modal">lg(800px)</button>
+                        <button type="button" class="ds-btn" data-bs-toggle="modal" data-bs-target="#size-xl-modal">xl(1140px)</button>
+                    </div>
+                </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 確認モーダル: 取り消せない操作の最終確認。本文は1〜2文、フッターは secondary → danger。
+         × とキャンセルは data-bs-dismiss="modal" で送信せずに閉じる -->
+    <div class="modal fade ds-modal" id="delete-modal" tabindex="-1" aria-labelledby="delete-modal-title" aria-hidden="true">
+        <div class="modal-dialog ds-modal-dialog">
+            <form class="ds-modal-content" method="post" action="#">
+                <div class="ds-modal-header">
+                    <h2 class="ds-modal-title" id="delete-modal-title">タスクを削除</h2>
+                    <button type="button" class="ds-modal-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+                </div>
+                <div class="ds-modal-body">
+                    <p>「資料作成」を削除します。この操作は取り消せません。</p>
+                </div>
+                <div class="ds-modal-footer">
+                    <button type="button" class="ds-btn" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="submit" class="ds-btn ds-btn-danger">削除</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- フォームモーダル: 1〜3項目の短い入力だけに使う。それより多い入力は form.html の画面にする。
+         本文に ds-form を置き、エラー表示はフォーム画面と同じ(ds-input--error + ds-field-error)。フッターは secondary → primary -->
+    <div class="modal fade ds-modal" id="status-modal" tabindex="-1" aria-labelledby="status-modal-title" aria-hidden="true">
+        <div class="modal-dialog ds-modal-dialog">
+            <form class="ds-modal-content" method="post" action="#">
+                <div class="ds-modal-header">
+                    <h2 class="ds-modal-title" id="status-modal-title">ステータスを変更</h2>
+                    <button type="button" class="ds-modal-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+                </div>
+                <div class="ds-modal-body">
+                    <div class="ds-form">
+                        <div class="ds-field">
+                            <label for="id_status" class="ds-label">ステータス</label>
+                            <select name="status" id="id_status" class="ds-input">
+                                <option value="todo" selected>To Do</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="done">Done</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="ds-modal-footer">
+                    <button type="button" class="ds-btn" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="submit" class="ds-btn ds-btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 幅の比較用のモーダル。幅は modal-dialog に ds-modal-dialog--sm / --lg / --xl を併記して変える(無指定が標準の500px) -->
+    <div class="modal fade ds-modal" id="size-sm-modal" tabindex="-1" aria-labelledby="size-sm-modal-title" aria-hidden="true">
+        <div class="modal-dialog ds-modal-dialog ds-modal-dialog--sm">
+            <div class="ds-modal-content">
+                <div class="ds-modal-header">
+                    <h2 class="ds-modal-title" id="size-sm-modal-title">sm(300px)</h2>
+                    <button type="button" class="ds-modal-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+                </div>
+                <div class="ds-modal-body">
+                    <p>modal-dialog に ds-modal-dialog--sm を併記すると、最大幅が 300px になります。</p>
+                </div>
+                <div class="ds-modal-footer">
+                    <button type="button" class="ds-btn" data-bs-dismiss="modal">閉じる</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade ds-modal" id="size-lg-modal" tabindex="-1" aria-labelledby="size-lg-modal-title" aria-hidden="true">
+        <div class="modal-dialog ds-modal-dialog ds-modal-dialog--lg">
+            <div class="ds-modal-content">
+                <div class="ds-modal-header">
+                    <h2 class="ds-modal-title" id="size-lg-modal-title">lg(800px)</h2>
+                    <button type="button" class="ds-modal-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+                </div>
+                <div class="ds-modal-body">
+                    <p>modal-dialog に ds-modal-dialog--lg を併記すると、最大幅が 800px になります。</p>
+                </div>
+                <div class="ds-modal-footer">
+                    <button type="button" class="ds-btn" data-bs-dismiss="modal">閉じる</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade ds-modal" id="size-xl-modal" tabindex="-1" aria-labelledby="size-xl-modal-title" aria-hidden="true">
+        <div class="modal-dialog ds-modal-dialog ds-modal-dialog--xl">
+            <div class="ds-modal-content">
+                <div class="ds-modal-header">
+                    <h2 class="ds-modal-title" id="size-xl-modal-title">xl(1140px)</h2>
+                    <button type="button" class="ds-modal-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+                </div>
+                <div class="ds-modal-body">
+                    <p>modal-dialog に ds-modal-dialog--xl を併記すると、最大幅が 1140px になります。</p>
+                </div>
+                <div class="ds-modal-footer">
+                    <button type="button" class="ds-btn" data-bs-dismiss="modal">閉じる</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 開閉は Bootstrap の modal.js が行う(Esc キー・背景クリック・data-bs-dismiss で閉じる)。
+         ヘッダーのドラッグ移動は app/static/app/modal.js が行う(閉じると元の位置に戻る) -->
+    <script src="../../static/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../../app/static/app/modal.js"></script>
+</body>
+</html>
