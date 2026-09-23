@@ -1,7 +1,6 @@
 import pytest
 from datetime import date, timedelta
 from django.contrib.auth.models import User
-from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.core.management import call_command
 from app.models import Employee, ManagementGroup, Task
 
