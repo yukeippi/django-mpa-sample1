@@ -150,13 +150,13 @@ pytest
 ### ユニットテストのみ実行
 
 ```bash
-pytest app/tests/unit/
+pytest --ignore=tests/e2e
 ```
 
 ### E2Eテストのみ実行
 
 ```bash
-pytest app/tests/e2e/
+pytest tests/e2e/
 ```
 
 ### 詳細な出力付きで実行
@@ -181,7 +181,7 @@ mypyとdjango-stubsで静的な型チェックを行います。
 mypy app common config
 ```
 
-段階的に導入しているため、型注釈が書かれている箇所だけを検査します(`check_untyped_defs = false`)。`app/tests/` と `app/seeds/` は対象外です。設定は `pyproject.toml` の `[tool.mypy]` にあります。
+段階的に導入しているため、型注釈が書かれている箇所だけを検査します(`check_untyped_defs = false`)。`tests/` と `app/seeds/` は対象外です。設定は `pyproject.toml` の `[tool.mypy]` にあります。
 
 ## 開発用コマンド
 

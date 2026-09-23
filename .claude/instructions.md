@@ -20,24 +20,30 @@
 
 ### File Structure Rules
 
-models、forms、views、lib、tests、templatesはディレクトリ化し、機能ごとにファイル分割してください。検証ロジックがForm/Validator/View/DB制約のどこに属するかはValidation Rulesを参照。
+models、forms、views、lib、templatesはディレクトリ化し、機能ごとにファイル分割してください。検証ロジックがForm/Validator/View/DB制約のどこに属するかはValidation Rulesを参照。
 
 Djangoが標準で持たないレイヤー(`services/`、`selectors/`のような独自ディレクトリ)は既定では作らない。読み書きの置き場所はDjango本来の位置、すなわちmodel・form・viewに寄せる(View Write Rules/QuerySet Rules参照)。
 
 #### Examples
-- models/todo.py
-- views/todo.py
-- forms/todo.py
-- lib/validators/todo.py
-- tests/unit/models/todo_test.py
-- tests/unit/forms/todo_test.py
-- tests/unit/views/todo_test.py
-- tests/unit/lib/validators/todo_test.py
+- app/models/todo.py
+- app/views/todo.py
+- app/forms/todo.py
+- app/lib/validators/todo.py
+- tests/app/models/todo_test.py
+- tests/app/forms/todo_test.py
+- tests/app/views/todo_test.py
+- tests/app/lib/validators/todo_test.py
 - tests/e2e/todo_test.py
 
-各ディレクトリに__init__.pyを配置すること。
+各ディレクトリに__init__.pyを配置すること(`tests/`直下にも置く。置かないと`tests/app/`が本物の`app`パッケージと同じ名前で読み込まれて衝突する)。
 
-`tests/unit/`配下は、ソース側の`models/`, `forms/`, `views/`, `lib/`と対応するレイヤーごとのディレクトリにさらに分割する(Railsの`test/models/`, `test/controllers/`に相当)。`app/lib/`(`auth.py`/`validators/`等、app内で共有するロジック。詳細はCommon Module Rulesを参照)のテストも同様に`tests/unit/lib/`に置き、`app/lib/`内でディレクトリを切っている場合はその構造も反映する(例: `tests/unit/lib/auth_test.py`、`tests/unit/lib/validators/todo_test.py`)。`tests/e2e/`はページ単位のテストのため、このレイヤー分割は行わない。
+テストコードはアプリの中(`app/tests/`)ではなく、プロジェクト直下の`tests/`にまとめる。`tests/`の下は、ソース側のトップレベルディレクトリと同じ名前で分ける(`tests/app/`、`config`や`common`にテストが必要になれば`tests/config/`、`tests/common/`)。全テスト共通のフィクスチャは`tests/conftest.py`に置く。
+
+`tests/<アプリ名>/`配下は、ソース側の`models/`, `forms/`, `views/`, `lib/`と対応するレイヤーごとのディレクトリに分割する(Railsの`test/models/`, `test/controllers/`に相当)。E2Eは`tests/e2e/`にあるため、アプリごとのディレクトリの下はユニットテストだけになる。`unit/`のような階層は挟まない。`app/lib/`(`auth.py`/`validators/`等、app内で共有するロジック。詳細はCommon Module Rulesを参照)のテストも同様に`tests/app/lib/`に置き、`app/lib/`内でディレクトリを切っている場合はその構造も反映する(例: `tests/app/lib/auth_test.py`、`tests/app/lib/validators/todo_test.py`)。`app/management/commands/`のようにその他のディレクトリにあるコードも、同じ構造で置く(例: `tests/app/management/commands/notes_test.py`)。
+
+`tests/e2e/`はページ単位のテストで、画面は複数のアプリにまたがるため、アプリごとのディレクトリの下ではなく`tests/`直下に置く。このレイヤー分割も行わない。
+
+経緯: ADR-0001
 
 ### Common Module Rules
 
@@ -1180,7 +1186,7 @@ class TestTaskComplete:
 「社員番号の形式」という1つの仕様を、層をまたいで重複させない書き分け。
 
 ```python
-# tests/unit/lib/validators/employee_test.py — 形式の仕様はここで網羅する
+# tests/app/lib/validators/employee_test.py — 形式の仕様はここで網羅する
 
 # 規定の形式に合う社員番号は受け付けること
 def test_validate_employee_number_format_accepts_valid_value():
@@ -1195,7 +1201,7 @@ def test_validate_employee_number_format_rejects_lowercase_prefix():
 ```
 
 ```python
-# tests/unit/forms/employee_test.py — validatorが繋がっていることだけを1ケース確認する
+# tests/app/forms/employee_test.py — validatorが繋がっていることだけを1ケース確認する
 
 # 形式違反の社員番号はフォームのエラーになること(形式のパターン網羅はvalidators側で行う)
 @pytest.mark.django_db
@@ -1206,7 +1212,7 @@ def test_form_rejects_invalid_employee_number_format():
 ```
 
 ```python
-# tests/unit/views/employee_test.py — 形式違反のパターンは扱わない。
+# tests/app/views/employee_test.py — 形式違反のパターンは扱わない。
 # viewが保証するのは「検証に失敗したら作成されず、フォームが再表示される」こと
 
 # 入力が検証に失敗した場合、レコードは作成されずフォームが再表示されること
@@ -1295,7 +1301,7 @@ def sample_user(db):
 
 設計上の決定のうち、**実在した代替案を却下して選んだもの**だけを ADR (Architecture Decision Record) として `docs/adr/` に残す。規約そのものはこのファイルに書き、ADRの主眼は「なぜ他の案ではないのか」に置く。決定の内容はこのファイル側に書き、ADRの `## 決定` は2〜3行の要約に留める(同じ説明を両方に展開しない)。
 
-> **このテンプレートには ADR を同梱しない。** `docs/adr/` はコピー先のプロジェクトで作り始める。`app/services/`を既定では作らない・Modelにライフサイクルメソッドを実装しない等、この規約集が既に定めている決定は、代替案の検討がテンプレート側で完了しており、コピー先で記憶に基づいて後から書けない(下記「AIの関与」の推測禁止に抵触する)。ADRに残すのはコピー先で新たに下した決定に限る。
+> **このテンプレートの ADR はコピー先に引き継がない。** テンプレート自体の規約を変えた決定は、このテンプレートの `docs/adr/` に残す。コピー先では `docs/adr/` を削除し、0001 から作り始める。`app/services/`を既定では作らない・Modelにライフサイクルメソッドを実装しない等、ADR を導入する前からこの規約集が定めている決定は、代替案の検討の記録が無く、記憶に基づいて後から書けない(下記「AIの関与」の推測禁止に抵触する)ため、ADR にしない。コピー先の ADR に残すのはコピー先で新たに下した決定に限る。
 
 - **配置**: `docs/adr/NNNN-<kebab-case-title>.md`。番号は4桁の連番で、ファイル名は番号から始める(`adr-`のようなプレフィックスを付けない)。検討が流れて欠番になっても埋めない
 - **ヘッダ**: 本文冒頭に `Status` と `Date`(`YYYY-MM-DD`、決定した日。supersedeされても変えない)を置く。supersede 関係がある場合は新しい側に `Supersedes: ADR-NNNN` を足す

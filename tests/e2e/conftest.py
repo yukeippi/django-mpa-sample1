@@ -20,7 +20,7 @@ def live_server_url(live_server):
 
 # E2Eテスト用のユーザー(Employee付き)を作成するフィクスチャ
 # is_staffと、新しいアクセス制御(ManagementGroup.is_admin)の両方を管理者にする
-# (別々の仕組みのため両方必要。app/tests/unit/views/*_test.pyの_grant_group_adminと同じパターン)
+# (別々の仕組みのため両方必要。tests/app/views/*_test.pyの_grant_group_adminと同じパターン)
 @pytest.fixture(scope='function')
 def e2e_user(db):
     user = User.objects.create_user(

@@ -17,23 +17,25 @@
 ユニットテストは、ソース側のディレクトリ構成に対応するレイヤーごとに分け、その中でモデルごとにファイルを分割する(Railsの`test/models/`, `test/controllers/`に相当)。E2Eテストはページ単位のためレイヤー分割は行わない。
 
 ```
-app/
-└── tests/
+tests/
+├── __init__.py
+├── conftest.py                  # 共通のフィクスチャ設定
+├── app/                         # appアプリのユニットテスト(レイヤーごと → モデルごと)
+│   ├── __init__.py
+│   ├── models/
+│   │   └── task_test.py
+│   ├── forms/
+│   ├── views/
+│   ├── permissions/
+│   ├── management/
+│   │   └── commands/
+│   └── lib/
+│       └── validators/
+└── e2e/                         # E2Eテスト(機能ごとにファイル分割)
     ├── __init__.py
-    ├── conftest.py              # 共通のフィクスチャ設定
-    ├── unit/                    # ユニットテスト(レイヤーごと → モデルごと)
-    │   ├── models/
-    │   │   └── task_test.py
-    │   ├── forms/
-    │   ├── views/
-    │   ├── permissions/
-    │   └── lib/
-    │       └── validators/
-    └── e2e/                     # E2Eテスト(機能ごとにファイル分割)
-        ├── __init__.py
-        ├── conftest.py          # E2E専用のフィクスチャ
-        ├── home_test.py         # ホームページのE2Eテスト
-        └── task_test.py         # タスク関連ページのE2Eテスト
+    ├── conftest.py              # E2E専用のフィクスチャ
+    ├── home_test.py             # ホームページのE2Eテスト
+    └── task_test.py             # タスク関連ページのE2Eテスト
 ```
 
 各ディレクトリに`__init__.py`を配置する。詳細は[.claude/instructions.md](../.claude/instructions.md)のFile Structure Rulesを参照。
@@ -49,13 +51,13 @@ pytest
 ### ユニットテストのみ実行
 
 ```bash
-pytest app/tests/unit/
+pytest --ignore=tests/e2e
 ```
 
 ### E2Eテストのみ実行
 
 ```bash
-pytest app/tests/e2e/ --browser chromium
+pytest tests/e2e/ --browser chromium
 ```
 
 ### 詳細出力付きで実行
@@ -75,13 +77,13 @@ pytest --cov=app --cov=config --cov-report=html --cov-report=term
 ### 特定のテストファイルを実行
 
 ```bash
-pytest app/tests/unit/task_test.py -v
+pytest tests/app/models/task_test.py -v
 ```
 
 ### 特定のテストクラス・メソッドを実行
 
 ```bash
-pytest app/tests/unit/task_test.py::TestTaskModel::test_create_task_with_minimal_fields -v
+pytest tests/app/models/task_test.py::TestTaskModel::test_create_task_with_minimal_fields -v
 ```
 
 ### 並列実行
@@ -148,7 +150,7 @@ class TestHomePage:
 
 ## 便利なフィクスチャ
 
-### `sample_user` (app/tests/conftest.py)
+### `sample_user` (tests/conftest.py)
 
 テスト用のサンプルユーザーを作成します。
 
@@ -157,7 +159,7 @@ def test_example(sample_user):
     assert sample_user.username == 'testuser'
 ```
 
-### `setup_test_data` (app/tests/e2e/conftest.py)
+### `setup_test_data` (tests/e2e/conftest.py)
 
 E2Eテスト用のサンプルデータを作成します。
 
@@ -185,7 +187,7 @@ def test_example(page, live_server_url):
 - `python_files`: テストファイルのパターン
 - `python_classes`: テストクラスのパターン
 - `python_functions`: テスト関数のパターン
-- `testpaths`: テストディレクトリ（app/tests）
+- `testpaths`: テストディレクトリ（tests）
 - `addopts`: pytest実行時のオプション
   - `--strict-markers`: 未定義のマーカー使用時にエラー
   - `--strict-config`: 設定エラー時にエラー
@@ -201,7 +203,7 @@ def test_example(page, live_server_url):
 pyproject.tomlで`DJANGO_ALLOW_ASYNC_UNSAFE=true`が設定されていますが、もし問題が発生した場合は以下のように実行してください：
 
 ```bash
-DJANGO_ALLOW_ASYNC_UNSAFE=true pytest app/tests/e2e/
+DJANGO_ALLOW_ASYNC_UNSAFE=true pytest tests/e2e/
 ```
 
 ### ブラウザが起動しない（headed mode）
