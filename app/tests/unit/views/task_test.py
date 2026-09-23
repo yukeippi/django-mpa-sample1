@@ -57,7 +57,7 @@ class TestTaskShowView:
         response = auth_client.get(f'/tasks/{task.id}/')
         assert response.status_code == 200
 
-    # 編集権限のあるユーザーには、ステータスの「変更」ボタンとモーダルが表示されることを確認
+    # 編集権限のあるユーザーには、ステータスの「変更」ボタンとモーダルが表示されること
     def test_show_by_editor_displays_status_change_button_and_modal(self, auth_client, sample_user):
         task = Task.objects.create(title='Task Detail', created_by=sample_user)
 
@@ -66,7 +66,7 @@ class TestTaskShowView:
         assert 'id="change-status-button"' in response.content.decode()
         assert 'id="task-status-modal"' in response.content.decode()
 
-    # 編集権限の無いユーザーには、ステータスの「変更」ボタンもモーダルも表示されないことを確認
+    # 編集権限の無いユーザーには、ステータスの「変更」ボタンもモーダルも表示されないこと
     def test_show_by_unrelated_user_hides_status_change_button_and_modal(self, other_auth_client, sample_user):
         task = Task.objects.create(title='Task Detail', created_by=sample_user)
 
@@ -75,7 +75,7 @@ class TestTaskShowView:
         assert 'id="change-status-button"' not in response.content.decode()
         assert 'id="task-status-modal"' not in response.content.decode()
 
-    # ステータス変更モーダルのセレクトでは、現在のステータスが選択されていることを確認
+    # ステータス変更モーダルのセレクトでは、現在のステータスが選択されていること
     def test_show_status_modal_selects_current_status(self, auth_client, sample_user):
         task = Task.objects.create(title='Task Detail', status='in_progress', created_by=sample_user)
 
@@ -286,7 +286,7 @@ class TestTaskDeleteView:
 @pytest.mark.django_db
 class TestTaskStatusView:
 
-    # 編集権限のあるユーザーはステータスを変更でき、詳細ページにリダイレクトされることを確認
+    # 編集権限のあるユーザーはステータスを変更でき、詳細ページにリダイレクトされること
     def test_post_by_creator_updates_status_and_redirects(self, auth_client, sample_user):
         task = Task.objects.create(title='Task', status='todo', created_by=sample_user)
 
@@ -297,7 +297,7 @@ class TestTaskStatusView:
         assert response.url == f'/tasks/{task.id}/'
         assert task.status == 'in_progress'
 
-    # ステータスを変更すると「タスクを更新しました。」と表示されることを確認
+    # ステータスを変更すると「タスクを更新しました。」と表示されること
     def test_post_by_creator_shows_success_message(self, auth_client, sample_user):
         task = Task.objects.create(title='Task', status='todo', created_by=sample_user)
 
@@ -305,7 +305,7 @@ class TestTaskStatusView:
 
         assert 'タスクを更新しました。' in [str(message) for message in response.context['messages']]
 
-    # 担当者はステータスを変更できることを確認
+    # 担当者はステータスを変更できること
     def test_post_by_assigned_user_updates_status(self, other_auth_client, sample_user, other_user):
         task = Task.objects.create(title='Task', status='todo', created_by=sample_user, assigned_to=other_user)
 
@@ -314,7 +314,7 @@ class TestTaskStatusView:
         task.refresh_from_db()
         assert task.status == 'done'
 
-    # 管理者は誰のタスクでもステータスを変更できることを確認
+    # 管理者は誰のタスクでもステータスを変更できること
     def test_post_by_admin_updates_status(self, admin_client, sample_user):
         task = Task.objects.create(title='Task', status='todo', created_by=sample_user)
 
@@ -323,7 +323,7 @@ class TestTaskStatusView:
         task.refresh_from_db()
         assert task.status == 'done'
 
-    # ステータス以外の項目は変わらないことを確認
+    # ステータス以外の項目は変わらないこと
     def test_post_does_not_change_other_fields(self, auth_client, sample_user):
         task = Task.objects.create(
             title='Task', description='説明 #1', status='todo', priority=2, created_by=sample_user,
@@ -338,7 +338,7 @@ class TestTaskStatusView:
         assert task.description == '説明 #1'
         assert task.priority == 2
 
-    # 選択肢に無い値を送った場合、ステータスは変更されず詳細ページにリダイレクトされることを確認
+    # 選択肢に無い値を送った場合、ステータスは変更されず詳細ページにリダイレクトされること
     def test_post_invalid_status_does_not_update_and_redirects(self, auth_client, sample_user):
         task = Task.objects.create(title='Task', status='todo', created_by=sample_user)
 
@@ -349,7 +349,7 @@ class TestTaskStatusView:
         assert response.url == f'/tasks/{task.id}/'
         assert task.status == 'todo'
 
-    # 選択肢に無い値を送った場合、エラーメッセージが表示されることを確認
+    # 選択肢に無い値を送った場合、エラーメッセージが表示されること
     def test_post_invalid_status_shows_error_message(self, auth_client, sample_user):
         task = Task.objects.create(title='Task', status='todo', created_by=sample_user)
 
@@ -357,7 +357,7 @@ class TestTaskStatusView:
 
         assert 'ステータスを変更できませんでした。' in [str(message) for message in response.context['messages']]
 
-    # 編集権限の無いユーザーが変更しようとすると403が返り、ステータスは変わらないことを確認
+    # 編集権限の無いユーザーが変更しようとすると403が返り、ステータスは変わらないこと
     def test_post_by_unrelated_user_returns_403(self, other_auth_client, sample_user):
         task = Task.objects.create(title='Task', status='todo', created_by=sample_user)
 
@@ -367,13 +367,13 @@ class TestTaskStatusView:
         assert response.status_code == 403
         assert task.status == 'todo'
 
-    # 存在しないタスクの場合404が返ることを確認
+    # 存在しないタスクの場合404が返ること
     def test_post_nonexistent_task_returns_404(self, auth_client):
         response = auth_client.post('/tasks/9999/status/', {'status': 'done'})
 
         assert response.status_code == 404
 
-    # 未ログインの場合、ログインページにリダイレクトされることを確認
+    # 未ログインの場合、ログインページにリダイレクトされること
     def test_post_requires_login(self, client, sample_user):
         task = Task.objects.create(title='Task', status='todo', created_by=sample_user)
 
@@ -382,7 +382,7 @@ class TestTaskStatusView:
         assert response.status_code == 302
         assert response.url.startswith('/login/')
 
-    # GETでアクセスした場合は405が返ることを確認(画面を持たない)
+    # GETでアクセスした場合は405が返ること(画面を持たない)
     def test_get_returns_405(self, auth_client, sample_user):
         task = Task.objects.create(title='Task', status='todo', created_by=sample_user)
 

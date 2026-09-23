@@ -122,7 +122,7 @@ class TestTaskEditPage:
 @pytest.mark.django_db
 class TestTaskStatusModal:
 
-    # 詳細画面の「変更」からモーダルでステータスを選んで保存すると、詳細画面のステータス表示が変わることを確認
+    # 詳細画面の「変更」からモーダルでステータスを選んで保存すると、詳細画面のステータス表示が変わること
     def test_change_status_in_modal_updates_detail(self, logged_in_page: Page, live_server_url, e2e_user):
         from app.models import Task
         task = Task.objects.create(title='Status Task', status='todo', priority=3, created_by=e2e_user)
