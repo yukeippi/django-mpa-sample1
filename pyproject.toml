@@ -21,7 +21,7 @@ DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-testpaths = ["app/tests"]
+testpaths = ["tests"]
 addopts = [
     "--strict-markers",
     "--strict-config",
@@ -57,7 +57,7 @@ ignore_missing_imports = true
 exclude = ["^app/migrations/", "^\\.venv/"]
 
 [[tool.mypy.overrides]]
-module = ["app.tests.*", "app.seeds.*"]
+module = ["tests.*", "app.seeds.*"]
 ignore_errors = true
 
 [tool.django-stubs]

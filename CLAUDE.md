@@ -3,7 +3,7 @@
 このファイルは、このリポジトリでAIアシスタント(Claude Code等)が開発を行う際の全体像を伝えるためのドキュメントです。
 
 このファイルは、Djangoプロジェクトの雛形(devcontainer / uv / django-environ / pytest+Playwright構成)に付属するテンプレートです。
-このリポジトリをコピーして新規プロジェクトを始める場合、**「1. プロジェクト概要」と「8. ドメイン知識・業務ルール」を新プロジェクトの内容に書き換えてください**。それ以外の章(技術スタック〜テスト方針)は雛形として引き継がれる想定です。
+このリポジトリをコピーして新規プロジェクトを始める場合、**「1. プロジェクト概要」と「8. ドメイン知識・業務ルール」を新プロジェクトの内容に書き換えてください**。テンプレート自体の決定を記録した `docs/adr/` は削除してください(ADRはコピー先で0001から作り始める)。それ以外の章(技術スタック〜テスト方針)は雛形として引き継がれる想定です。
 
 ## 1. プロジェクト概要
 
@@ -46,13 +46,14 @@ app/             メインアプリケーション
 │       └── task/        モデルごとのテンプレート (index/show/new/edit)
 │           ├── index.html
 │           └── show.html
-└── tests/
-    ├── unit/        ユニットテスト(models/forms/viewsのレイヤーごとにディレクトリ分割し、その中でモデルごとにファイル分割)
-    │   ├── models/
-    │   ├── forms/
-    │   └── views/
-    └── e2e/         E2Eテスト(Playwright、機能ごとにファイル分割)
 common/          複数アプリ間で共有するモジュール (utils.py, mixins.py)
+tests/           テストコード(アプリの外にまとめる)
+├── conftest.py      全テスト共通のフィクスチャ
+├── app/         appアプリのユニットテスト(models/forms/viewsのレイヤーごとにディレクトリ分割し、その中でモデルごとにファイル分割)
+│   ├── models/
+│   ├── forms/
+│   └── views/
+└── e2e/         E2Eテスト(Playwright、機能ごとにファイル分割)
 static/          サードパーティ製vendorファイル専用 (自前CSSは置かない)
 └── vendor/
     └── bootstrap/...
@@ -76,8 +77,8 @@ python manage.py runserver
 
 # テスト実行
 pytest                      # 全テスト
-pytest app/tests/unit/      # ユニットテストのみ
-pytest app/tests/e2e/       # E2Eテストのみ
+pytest --ignore=tests/e2e   # ユニットテストのみ
+pytest tests/e2e/           # E2Eテストのみ
 pytest --cov=app --cov=config --cov-report=html --cov-report=term  # カバレッジ付き
 
 # 型チェック
