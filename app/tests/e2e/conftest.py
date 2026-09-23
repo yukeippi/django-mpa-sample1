@@ -1,6 +1,8 @@
 import pytest
-from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+from datetime import date, timedelta
+from django.contrib.auth.models import User
 from django.core.management import call_command
+from app.models import Employee, ManagementGroup, Task
 
 
 # E2Eテスト用のデータベース設定とマイグレーション
@@ -21,8 +23,6 @@ def live_server_url(live_server):
 # (別々の仕組みのため両方必要。app/tests/unit/views/*_test.pyの_grant_group_adminと同じパターン)
 @pytest.fixture(scope='function')
 def e2e_user(db):
-    from django.contrib.auth.models import User
-    from app.models import Employee, ManagementGroup
     user = User.objects.create_user(
         username='e2euser',
         email='e2e@example.com',
@@ -48,9 +48,6 @@ def logged_in_page(page, live_server_url, e2e_user):
 # E2Eテスト用のサンプルタスクをセットアップ(e2e_userでログイン済みの状態と合わせて使う想定)
 @pytest.fixture(scope='function')
 def setup_test_data(e2e_user):
-    from app.models import Task
-    from datetime import date, timedelta
-
     # サンプルタスクを作成
     Task.objects.create(
         title='E2E Test Task 1',
