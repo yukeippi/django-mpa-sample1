@@ -230,8 +230,8 @@
   color: var(--ds-danger-text); background: var(--ds-danger-bg); border-color: var(--ds-danger-border);
 }
 .ds-alert-message { flex: 1; }
-.ds-alert-close, .ds-modal-close { width: 24px; height: 24px; padding: 0; color: inherit; background: none; border: 0; cursor: pointer; }
-.ds-alert-close::before, .ds-modal-close::before {
+.ds-alert-close, .ds-modal-close, .ds-offcanvas-close { width: 24px; height: 24px; padding: 0; color: inherit; background: none; border: 0; cursor: pointer; }
+.ds-alert-close::before, .ds-modal-close::before, .ds-offcanvas-close::before {
   content: ""; display: block; width: 16px; height: 16px; margin: auto; background: currentColor;
   -webkit-mask: var(--ds-icon-close) center / contain no-repeat;
   mask: var(--ds-icon-close) center / contain no-repeat;
@@ -344,9 +344,9 @@ select.ds-input[multiple] { padding-right: 12px; background-image: none; }
 .ds-modal-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 20px 24px 0; }
 /* ヘッダーをドラッグしてモーダルを動かせる(modal.js) */
 .ds-modal-header { cursor: move; touch-action: none; user-select: none; }
-.ds-modal-close { flex-shrink: 0; color: var(--ds-muted); border-radius: var(--ds-radius-control); }
-.ds-modal-close:hover { color: var(--ds-ink); }
-.ds-modal-close:focus-visible { outline: none; box-shadow: var(--ds-primary-ring); }
+.ds-modal-close, .ds-offcanvas-close { flex-shrink: 0; color: var(--ds-muted); border-radius: var(--ds-radius-control); }
+.ds-modal-close:hover, .ds-offcanvas-close:hover { color: var(--ds-ink); }
+.ds-modal-close:focus-visible, .ds-offcanvas-close:focus-visible { outline: none; box-shadow: var(--ds-primary-ring); }
 .ds-modal-title { margin: 0; font-size: var(--ds-fs-h5); font-weight: 600; }
 .ds-modal-body { padding: 16px 24px 24px; }
 .ds-modal-body > p { margin: 0; }
@@ -370,6 +370,29 @@ select.ds-input[multiple] { padding-right: 12px; background-image: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .ds-modal.fade, .ds-modal.fade .ds-modal-dialog, .modal-backdrop.fade { transition: none; }
+}
+
+/* ---- 右ペイン(Bootstrap 5 の offcanvas.js で開閉する。Bootstrap の CSS は読み込まないため、JS が使うクラスの見た目をここで定義する) ---- */
+.ds-offcanvas {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 1045;
+  display: flex; flex-direction: column; width: 400px; max-width: 100%;
+  color: var(--ds-ink); background: var(--ds-surface);
+  border-left: 1px solid var(--ds-border-control);
+  visibility: hidden; outline: 0;
+  transform: translateX(100%); transition: transform 0.3s ease-in-out;
+}
+.ds-offcanvas.show:not(.hiding), .ds-offcanvas.showing { transform: none; }
+.ds-offcanvas.show, .ds-offcanvas.showing, .ds-offcanvas.hiding { visibility: visible; }
+.ds-offcanvas-header {
+  display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  padding: 20px 24px; border-bottom: 1px solid var(--ds-line);
+}
+.ds-offcanvas-title { margin: 0; font-size: var(--ds-fs-h5); font-weight: 600; }
+.ds-offcanvas-body { flex-grow: 1; overflow-y: auto; }
+.ds-offcanvas-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 24px; border-top: 1px solid var(--ds-line); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-offcanvas { transition: none; }
 }
 
 /* ---- 狭い画面 ---- */

@@ -19,6 +19,7 @@ Task Manager 管理画面(タスク・社員・会社・部門・管理グルー
 | [`design-system/detail.html`](design-system/detail.html) | 詳細画面の見本(アクション3種・項目リスト) |
 | [`design-system/form.html`](design-system/form.html) | フォーム画面の見本(入力・エラー表示・送信ボタン) |
 | [`design-system/modal.html`](design-system/modal.html) | モーダルの見本(削除確認・短いフォーム。詳細画面の上で開く) |
+| [`design-system/offcanvas.html`](design-system/offcanvas.html) | 右ペインの見本(一覧の行をクリックすると、右から詳細が開く) |
 
 ルール:
 
@@ -43,7 +44,7 @@ Task Manager 管理画面(タスク・社員・会社・部門・管理グルー
    - ユーザーには、カタログと Bootstrap に無いことを確認した旨と、作ったものを報告する。
 4. **2・3 のどちらの場合も、`common.css`・見本HTML・本ドキュメントに追加し、カタログに1行追加する。** ユーザーが見本で確認して承認してから画面に使う。
 
-主なクラス: `ds-page`(body) / `ds-app` `ds-sidebar` `ds-brand` `ds-nav-label` `ds-nav-item` `ds-topbar` `ds-user` `ds-avatar` `ds-main` `ds-content` / `ds-icon ds-icon--*` / `ds-page-header` `ds-h1` `ds-actions` / `ds-card` (+ `--flush` `--narrow`) `ds-card-header` `ds-card-title` / `ds-grid` (+ `--main-side`) / `ds-btn` + `ds-btn-primary|danger` (+ `ds-btn-sm`) / `ds-status` (+ `--progress|--done|--danger`) / `ds-alert` + `--success|--error` `ds-empty` / `ds-form` `ds-field` `ds-label` `ds-input` (+ `--error`) `ds-field-error` / `ds-table` / `ds-detail*` / `ds-modal` `ds-modal-dialog` (+ `--sm` `--lg` `--xl`) `ds-modal-content` `ds-modal-header` `ds-modal-title` `ds-modal-close` `ds-modal-body` `ds-modal-footer` / `ds-donut*` `ds-legend`
+主なクラス: `ds-page`(body) / `ds-app` `ds-sidebar` `ds-brand` `ds-nav-label` `ds-nav-item` `ds-topbar` `ds-user` `ds-avatar` `ds-main` `ds-content` / `ds-icon ds-icon--*` / `ds-page-header` `ds-h1` `ds-actions` / `ds-card` (+ `--flush` `--narrow`) `ds-card-header` `ds-card-title` / `ds-grid` (+ `--main-side`) / `ds-btn` + `ds-btn-primary|danger` (+ `ds-btn-sm`) / `ds-status` (+ `--progress|--done|--danger`) / `ds-alert` + `--success|--error` `ds-empty` / `ds-form` `ds-field` `ds-label` `ds-input` (+ `--error`) `ds-field-error` / `ds-table` / `ds-detail*` / `ds-modal` `ds-modal-dialog` (+ `--sm` `--lg` `--xl`) `ds-modal-content` `ds-modal-header` `ds-modal-title` `ds-modal-close` `ds-modal-body` `ds-modal-footer` / `ds-offcanvas` `ds-offcanvas-header` `ds-offcanvas-title` `ds-offcanvas-close` `ds-offcanvas-body` `ds-offcanvas-footer` / `ds-donut*` `ds-legend`
 
 ## 原則
 
@@ -168,6 +169,18 @@ secondary を白抜きにしないのは、青・赤の塗りつぶしボタン�
 | フォーム | 1〜3項目の短い入力(ステータス変更など) | 本文に `ds-form` を置く。エラー表示はフォーム画面と同じ。項目がそれ以上になる場合はモーダルにせずフォーム画面にする |
 
 モーダルを重ねて開かない。成功時の結果は、これまでどおり送信後のリダイレクト先でフラッシュメッセージとして表示する。`bootstrap.bundle.min.js` は `layouts/default.html` で全画面に読み込んでいる。`app/modal.js` はモーダルの無い画面に読み込まないよう、モーダルを置く画面のテンプレートで `{% block extra_js %}` に読み込む(モーダルを条件付きで出す場合は、同じ条件で囲む)。使用例: タスク詳細画面のステータス変更(`app/templates/app/task/show.html`)。
+
+### 右ペイン
+
+一覧の行をクリックしたとき、画面を移動せずに右からペインを出して詳細を表示する。ペインを開いている間も一覧をスクロール・クリックでき、別の行を押すとペインを開いたまま中身が切り替わる(メールソフトのような使い方)。開閉は Bootstrap 5 の offcanvas.js に任せ、Bootstrap の設定 `data-bs-scroll="true"`(背面のスクロールを止めない)と `data-bs-backdrop="false"`(背景を暗くしない)を使う。動き(右から0.3秒で滑り込む、Escキー・×で閉じる)は Bootstrap と同じ。外をクリックしても閉じない。見た目は `common.css` の `ds-offcanvas*` で定義している。幅は Bootstrap と同じ 400px の白いパネルで、高さは画面いっぱい、影なし。背景を暗くしないので、一覧との境界に左の罫線(`border-control`)を引く。画面幅が400px未満のときは画面幅いっぱいに開く。
+
+- マークアップ: `div.offcanvas.offcanvas-end.ds-offcanvas`(`tabindex="-1"`、`aria-labelledby` でタイトルに結び付ける。`data-bs-scroll="true" data-bs-backdrop="false"` を付ける)> `ds-offcanvas-header`(`ds-offcanvas-title` の h2 + 右端の × `ds-offcanvas-close`)→ `ds-offcanvas-body` → `ds-offcanvas-footer`(右寄せ、上に `line` の罫線)。
+- `offcanvas` `offcanvas-end` は Bootstrap の JS が使うクラスなので、`ds-offcanvas` と併記する(見た目は付かない)。
+- 背景を暗くしない設定では、Bootstrap はフォーカスがペインの中にあるときしか Esc を受け付けない。一覧をクリックした後でも Esc で閉じられるよう、`app/static/app/offcanvas.js` を、ペインを置く画面でだけ読み込む(`modal.js` と同じ扱い)。
+- 開く操作では `bootstrap.Offcanvas.getOrCreateInstance(<ペイン>).show()` を呼ぶ。`data-bs-toggle="offcanvas"` は使わない(開閉の切り替えなので、開いているときに別の行を押すとペインが閉じてしまう)。× は `<button type="button" data-bs-dismiss="offcanvas">`。
+- 本文には詳細画面と同じ `ds-detail` を置く。本文が長いときは本文だけがスクロールし、ヘッダーとフッターは固定される。
+- フッターの操作ボタンは、ページと同じく secondary → primary → danger の順。
+- 幅のバリエーションは設けない(Bootstrap の offcanvas も幅は1種類)。
 
 ### ページヘッダー
 
