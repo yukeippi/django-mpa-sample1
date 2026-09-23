@@ -48,33 +48,33 @@
                     </div>
                 </div>
 
-                <!-- 行に data-bs-toggle="offcanvas" と data-bs-target を付けると、クリックで右ペインが開く。
-                     見本では、どの行を押しても同じタスク(資料作成)を表示する。アプリでは押した行のタスクを表示する -->
+                <!-- 行をクリックすると右ペインが開く。ペインを開いたまま別の行を押すと、その行の内容に切り替わる。
+                     見本ではタイトルだけを切り替え、ほかの項目は同じ内容を表示する。アプリでは押した行のタスクの中身を htmx で取得する -->
                 <div class="ds-card ds-card--flush">
                     <table class="ds-table">
                         <thead>
                             <tr><th>タイトル</th><th>ステータス</th><th>優先度</th><th>作成日時</th></tr>
                         </thead>
                         <tbody>
-                                <tr data-bs-toggle="offcanvas" data-bs-target="#task-detail-pane" aria-controls="task-detail-pane">
+                                <tr aria-controls="task-detail-pane">
                                     <td>資料作成</td>
                                     <td><span class="ds-status">To Do</span></td>
                                     <td class="ds-muted">3</td>
                                     <td class="ds-muted">2026-09-01 10:00</td>
                                 </tr>
-                                <tr data-bs-toggle="offcanvas" data-bs-target="#task-detail-pane" aria-controls="task-detail-pane">
+                                <tr aria-controls="task-detail-pane">
                                     <td>レビュー対応</td>
                                     <td><span class="ds-status ds-status--progress">In Progress</span></td>
                                     <td class="ds-muted">2</td>
                                     <td class="ds-muted">2026-09-03 14:30</td>
                                 </tr>
-                                <tr data-bs-toggle="offcanvas" data-bs-target="#task-detail-pane" aria-controls="task-detail-pane">
+                                <tr aria-controls="task-detail-pane">
                                     <td>リリース準備</td>
                                     <td><span class="ds-status ds-status--done">Done</span></td>
                                     <td class="ds-muted">1</td>
                                     <td class="ds-muted">2026-09-05 09:15</td>
                                 </tr>
-                                <tr data-bs-toggle="offcanvas" data-bs-target="#task-detail-pane" aria-controls="task-detail-pane">
+                                <tr aria-controls="task-detail-pane">
                                     <td>#123 対応</td>
                                     <td><span class="ds-status">To Do</span></td>
                                     <td class="ds-muted">4</td>
@@ -88,8 +88,9 @@
     </div>
 
     <!-- 右ペイン: 幅400px(Bootstrap の offcanvas と同じ)。ヘッダー(タイトル + ×)→ 本文(詳細表示)→ フッター(操作)。
-         閉じる: ×・Esc キー・背景クリック。本文が長いときは本文だけがスクロールする -->
-    <div class="offcanvas offcanvas-end ds-offcanvas" tabindex="-1" id="task-detail-pane" aria-labelledby="task-detail-pane-title">
+         data-bs-scroll="true" data-bs-backdrop="false" で、開いている間も一覧をスクロール・クリックできる。
+         閉じる: ×・Esc キー。本文が長いときは本文だけがスクロールする -->
+    <div class="offcanvas offcanvas-end ds-offcanvas" tabindex="-1" id="task-detail-pane" aria-labelledby="task-detail-pane-title" data-bs-scroll="true" data-bs-backdrop="false">
         <div class="ds-offcanvas-header">
             <h2 class="ds-offcanvas-title" id="task-detail-pane-title">資料作成</h2>
             <button type="button" class="ds-offcanvas-close" data-bs-dismiss="offcanvas" aria-label="閉じる"></button>
@@ -130,7 +131,19 @@
         </div>
     </div>
 
-    <!-- 開閉は Bootstrap の offcanvas.js が行う -->
+    <!-- 開閉は Bootstrap の offcanvas.js が行う。行のクリックでは toggle ではなく show() を呼ぶ
+         (data-bs-toggle だと、開いているときに別の行を押すとペインが閉じてしまうため) -->
     <script src="../../static/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <!-- フォーカスがペインの外にあっても Esc で閉じられるようにする(Bootstrap に無い部分) -->
+    <script src="../../app/static/app/offcanvas.js"></script>
+    <script>
+        var pane = document.getElementById('task-detail-pane');
+        document.querySelectorAll('tr[aria-controls="task-detail-pane"]').forEach(function (row) {
+            row.addEventListener('click', function () {
+                document.getElementById('task-detail-pane-title').textContent = row.cells[0].textContent;
+                bootstrap.Offcanvas.getOrCreateInstance(pane).show();
+            });
+        });
+    </script>
 </body>
 </html>

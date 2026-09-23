@@ -172,11 +172,12 @@ secondary を白抜きにしないのは、青・赤の塗りつぶしボタン�
 
 ### 右ペイン
 
-一覧の行をクリックしたとき、画面を移動せずに右からペインを出して詳細を表示する。開閉は Bootstrap 5 の offcanvas.js に任せ、動き(右から0.3秒で滑り込む、Escキー・背景クリック・×で閉じる、フォーカスの閉じ込め、背面スクロールの停止)を Bootstrap と同じにする。見た目は `common.css` の `ds-offcanvas*` で定義している。幅は Bootstrap と同じ 400px の白いパネルで、高さは画面いっぱい、影なし。背景はモーダルと同じ(`ink` を45%の不透明度)。画面幅が400px未満のときは画面幅いっぱいに開く。
+一覧の行をクリックしたとき、画面を移動せずに右からペインを出して詳細を表示する。ペインを開いている間も一覧をスクロール・クリックでき、別の行を押すとペインを開いたまま中身が切り替わる(メールソフトのような使い方)。開閉は Bootstrap 5 の offcanvas.js に任せ、Bootstrap の設定 `data-bs-scroll="true"`(背面のスクロールを止めない)と `data-bs-backdrop="false"`(背景を暗くしない)を使う。動き(右から0.3秒で滑り込む、Escキー・×で閉じる)は Bootstrap と同じ。外をクリックしても閉じない。見た目は `common.css` の `ds-offcanvas*` で定義している。幅は Bootstrap と同じ 400px の白いパネルで、高さは画面いっぱい、影なし。背景を暗くしないので、一覧との境界に左の罫線(`border-control`)を引く。画面幅が400px未満のときは画面幅いっぱいに開く。
 
-- マークアップ: `div.offcanvas.offcanvas-end.ds-offcanvas`(`tabindex="-1"`、`aria-labelledby` でタイトルに結び付ける)> `ds-offcanvas-header`(`ds-offcanvas-title` の h2 + 右端の × `ds-offcanvas-close`)→ `ds-offcanvas-body` → `ds-offcanvas-footer`(右寄せ、上に `line` の罫線)。
-- `offcanvas` `offcanvas-end` は Bootstrap の JS が使うクラスなので、`ds-offcanvas` と併記する(見た目は付かない)。背景として Bootstrap が生成する `offcanvas-backdrop` だけは、`common.css` でそのクラス名のまま見た目を定義している。
-- 開く要素(一覧の `tr` など)に `data-bs-toggle="offcanvas" data-bs-target="#<id>"` を付ける。× は `<button type="button" data-bs-dismiss="offcanvas">`。独自のスクリプトは書かない。
+- マークアップ: `div.offcanvas.offcanvas-end.ds-offcanvas`(`tabindex="-1"`、`aria-labelledby` でタイトルに結び付ける。`data-bs-scroll="true" data-bs-backdrop="false"` を付ける)> `ds-offcanvas-header`(`ds-offcanvas-title` の h2 + 右端の × `ds-offcanvas-close`)→ `ds-offcanvas-body` → `ds-offcanvas-footer`(右寄せ、上に `line` の罫線)。
+- `offcanvas` `offcanvas-end` は Bootstrap の JS が使うクラスなので、`ds-offcanvas` と併記する(見た目は付かない)。
+- 背景を暗くしない設定では、Bootstrap はフォーカスがペインの中にあるときしか Esc を受け付けない。一覧をクリックした後でも Esc で閉じられるよう、`app/static/app/offcanvas.js` を、ペインを置く画面でだけ読み込む(`modal.js` と同じ扱い)。
+- 開く操作では `bootstrap.Offcanvas.getOrCreateInstance(<ペイン>).show()` を呼ぶ。`data-bs-toggle="offcanvas"` は使わない(開閉の切り替えなので、開いているときに別の行を押すとペインが閉じてしまう)。× は `<button type="button" data-bs-dismiss="offcanvas">`。
 - 本文には詳細画面と同じ `ds-detail` を置く。本文が長いときは本文だけがスクロールし、ヘッダーとフッターは固定される。
 - フッターの操作ボタンは、ページと同じく secondary → primary → danger の順。
 - 幅のバリエーションは設けない(Bootstrap の offcanvas も幅は1種類)。

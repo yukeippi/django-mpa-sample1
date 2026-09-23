@@ -377,6 +377,7 @@ select.ds-input[multiple] { padding-right: 12px; background-image: none; }
   position: fixed; top: 0; right: 0; bottom: 0; z-index: 1045;
   display: flex; flex-direction: column; width: 400px; max-width: 100%;
   color: var(--ds-ink); background: var(--ds-surface);
+  border-left: 1px solid var(--ds-border-control);
   visibility: hidden; outline: 0;
   transform: translateX(100%); transition: transform 0.3s ease-in-out;
 }
@@ -390,16 +391,8 @@ select.ds-input[multiple] { padding-right: 12px; background-image: none; }
 .ds-offcanvas-body { flex-grow: 1; overflow-y: auto; }
 .ds-offcanvas-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 24px; border-top: 1px solid var(--ds-line); }
 
-/* 背景(Bootstrap が body 直下に生成する。見た目はモーダルの背景と同じ) */
-.offcanvas-backdrop {
-  position: fixed; top: 0; left: 0; z-index: 1040;
-  width: 100vw; height: 100vh; background: var(--ds-ink);
-}
-.offcanvas-backdrop.fade { opacity: 0; transition: opacity 0.15s linear; }
-.offcanvas-backdrop.show { opacity: 0.45; }
-
 @media (prefers-reduced-motion: reduce) {
-  .ds-offcanvas, .offcanvas-backdrop.fade { transition: none; }
+  .ds-offcanvas { transition: none; }
 }
 
 /* ---- 狭い画面 ---- */
