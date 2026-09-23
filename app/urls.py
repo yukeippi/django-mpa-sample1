@@ -11,6 +11,7 @@ urlpatterns = [
     path('tasks/new/', views.task.new, name='task_new'),
     path('tasks/<int:pk>/', views.task.show, name='task_show'),
     path('tasks/<int:pk>/edit/', views.task.edit, name='task_edit'),
+    path('tasks/<int:pk>/status/', views.task.status, name='task_status'),
     path('tasks/<int:pk>/delete/', views.task.delete, name='task_delete'),
     path('api/tasks/', views.task.api, name='task_api'),
     path('employees/', views.employee.index, name='employee_index'),

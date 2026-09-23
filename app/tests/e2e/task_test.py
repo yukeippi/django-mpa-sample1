@@ -120,6 +120,24 @@ class TestTaskEditPage:
 
 
 @pytest.mark.django_db
+class TestTaskStatusModal:
+
+    # 詳細画面の「変更」からモーダルでステータスを選んで保存すると、詳細画面のステータス表示が変わることを確認
+    def test_change_status_in_modal_updates_detail(self, logged_in_page: Page, live_server_url, e2e_user):
+        from app.models import Task
+        task = Task.objects.create(title='Status Task', status='todo', priority=3, created_by=e2e_user)
+
+        logged_in_page.goto(f'{live_server_url}/tasks/{task.id}/')
+        logged_in_page.click('#change-status-button')
+        expect(logged_in_page.locator('#task-status-modal')).to_be_visible()
+        logged_in_page.select_option('#task-status-modal select', 'done')
+        logged_in_page.click('#task-status-submit')
+
+        expect(logged_in_page.locator('#task-status')).to_have_text('Done')
+        expect(logged_in_page.locator('.messages')).to_contain_text('タスクを更新しました。')
+
+
+@pytest.mark.django_db
 class TestTaskDeletePage:
 
     # タスクを削除すると一覧ページにリダイレクトされ、成功メッセージが表示されることを確認
