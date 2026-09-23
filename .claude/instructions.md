@@ -1065,7 +1065,7 @@ class Task(models.Model):
 テストが仕様書として読めるために、個々のテストは以下の性質を満たす。
 
 - **テスト名を仕様の一文にする**: `test_<条件>_<期待結果>`の形にする。`test_complete`/`test_success`/`test_error`のような、何を保証しているのか分からない名前にしない。条件と結果が名前に出ていれば、テスト名を並べただけで仕様が読める
-- **各テストの上に、保証する仕様を1行のコメントで書く**(Comment Rules参照)。テスト名で表現しきれない前提・理由はここに書く
+- **各テストの上に、保証する仕様を1行のコメントで書く**(Comment Rules参照)。テスト名で表現しきれない前提・理由はここに書く。コメントは仕様の一文として「〜こと」で終える(例: `# 完了済みのタスクは完了にできないこと`)。「〜ことを確認」のようにテストの動作として書かない。コメントが伝えるのはテストが何をするかではなく、何を保証するかであるため
 - **1つのテストが検証する仕様は1つ**: どのテストも、箇条書きのどれか1項目に対応する。1つのテストに複数のルールを詰め込まない。詰め込むと、落ちたときにどの仕様が壊れたのかが分からず、1つ目のassertで落ちて以降の仕様が検証されないまま終わる。**逆方向は制約しない。** 1つの仕様を正常系・異常系・境界値の複数テストで表してよい(そうしても上記の問題は起きず、むしろどの条件で壊れたかが明確になる)
 - **検証対象は外から観測できるものに限る**: レスポンスのステータスコード・リダイレクト先・context、DBの状態、送出された例外とその`code`、フォームの`errors`。内部のどの関数が呼ばれたかは検証しない(Test Double Rules参照)
 - **その仕様を決めている値はテスト本体に書く**: 結果を左右する条件(境界値、権限の有無、対象の現在状態)は、テスト関数の中に直接書く。共通fixtureに入れると、テストを読んでも前提が分からず仕様が追えなくなる。逆に、そのテストの成否に関係しない準備(ログイン用のユーザー作成など)はfixtureやヘルパーに寄せ、本文には本質だけを残す
@@ -1102,7 +1102,7 @@ class TestTaskComplete:
 @pytest.mark.django_db
 class TestTaskComplete:
 
-    # 未完了のタスクは完了にでき、詳細ページにリダイレクトされる
+    # 未完了のタスクは完了にでき、詳細ページにリダイレクトされること
     def test_complete_incomplete_task_marks_as_completed(self, auth_client, sample_user):
         task = Task.objects.create(title='タスク', assignee=sample_user, status=Task.Status.IN_PROGRESS)
 
@@ -1113,7 +1113,7 @@ class TestTaskComplete:
         assert response.url == f'/tasks/{task.pk}/'
         assert task.status == Task.Status.COMPLETED
 
-    # 完了時は完了日時が記録される
+    # 完了時は完了日時が記録されること
     def test_complete_records_completed_at(self, auth_client, sample_user):
         task = Task.objects.create(title='タスク', assignee=sample_user, status=Task.Status.IN_PROGRESS)
 
@@ -1122,7 +1122,7 @@ class TestTaskComplete:
         task.refresh_from_db()
         assert task.completed_at is not None
 
-    # 完了すると履歴が1件作成される
+    # 完了すると履歴が1件作成されること
     def test_complete_creates_history_record(self, auth_client, sample_user):
         task = Task.objects.create(title='タスク', assignee=sample_user, status=Task.Status.IN_PROGRESS)
 
@@ -1133,7 +1133,7 @@ class TestTaskComplete:
         assert history.action == 'completed'
         assert history.operator == sample_user
 
-    # 完了済みのタスクは完了にできず、状態も変わらない
+    # 完了済みのタスクは完了にできず、状態も変わらないこと
     def test_complete_already_completed_task_is_rejected(self, auth_client, sample_user):
         task = Task.objects.create(title='タスク', assignee=sample_user, status=Task.Status.COMPLETED)
 
@@ -1143,7 +1143,7 @@ class TestTaskComplete:
         assert 'このタスクは完了にできません。' in [str(message) for message in response.context['messages']]
         assert task.status == Task.Status.COMPLETED
 
-    # 未完了の子タスクが残っている場合は完了にできない
+    # 未完了の子タスクが残っている場合は完了にできないこと
     def test_complete_with_incomplete_children_is_rejected(self, auth_client, sample_user):
         task = Task.objects.create(title='親タスク', assignee=sample_user, status=Task.Status.IN_PROGRESS)
         Task.objects.create(title='子タスク', parent=task, assignee=sample_user, status=Task.Status.IN_PROGRESS)
@@ -1153,7 +1153,7 @@ class TestTaskComplete:
         task.refresh_from_db()
         assert task.status == Task.Status.IN_PROGRESS
 
-    # 担当者以外は完了にできない(存在を隠すため404)
+    # 担当者以外は完了にできないこと(存在を隠すため404)
     def test_complete_by_non_assignee_returns_404(self, auth_client, sample_user):
         other_user = User.objects.create_user(username='other')
         task = Task.objects.create(title='タスク', assignee=other_user, status=Task.Status.IN_PROGRESS)
@@ -1182,12 +1182,12 @@ class TestTaskComplete:
 ```python
 # tests/unit/lib/validators/employee_test.py — 形式の仕様はここで網羅する
 
-# 規定の形式に合う社員番号は受け付ける
+# 規定の形式に合う社員番号は受け付けること
 def test_validate_employee_number_format_accepts_valid_value():
     validate_employee_number_format('E0001')
 
 
-# プレフィックスが小文字の社員番号は拒否し、codeで識別できる
+# プレフィックスが小文字の社員番号は拒否し、codeで識別できること
 def test_validate_employee_number_format_rejects_lowercase_prefix():
     with pytest.raises(ValidationError) as error:
         validate_employee_number_format('e0001')
@@ -1197,7 +1197,7 @@ def test_validate_employee_number_format_rejects_lowercase_prefix():
 ```python
 # tests/unit/forms/employee_test.py — validatorが繋がっていることだけを1ケース確認する
 
-# 形式違反の社員番号はフォームのエラーになる(形式のパターン網羅はvalidators側で行う)
+# 形式違反の社員番号はフォームのエラーになること(形式のパターン網羅はvalidators側で行う)
 @pytest.mark.django_db
 def test_form_rejects_invalid_employee_number_format():
     form = EmployeeForm({'employee_number': 'INVALID'})
@@ -1209,7 +1209,7 @@ def test_form_rejects_invalid_employee_number_format():
 # tests/unit/views/employee_test.py — 形式違反のパターンは扱わない。
 # viewが保証するのは「検証に失敗したら作成されず、フォームが再表示される」こと
 
-# 入力が検証に失敗した場合、レコードは作成されずフォームが再表示される
+# 入力が検証に失敗した場合、レコードは作成されずフォームが再表示されること
 @pytest.mark.django_db
 def test_create_with_invalid_input_does_not_create_record(auth_client):
     response = auth_client.post('/employees/new/', {'employee_number': 'INVALID'})

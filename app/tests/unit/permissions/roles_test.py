@@ -7,11 +7,11 @@ from app.models import Company, Department, DepartmentHierarchy, EmployeeDepartm
 @pytest.mark.django_db
 class TestIsAdmin:
 
-    # is_staffがTrueのユーザーは管理者と判定されることを確認
+    # is_staffがTrueのユーザーは管理者と判定されること
     def test_staff_user_is_admin(self, admin_user):
         assert is_admin(admin_user) is True
 
-    # is_staffがFalseのユーザーは管理者ではないと判定されることを確認
+    # is_staffがFalseのユーザーは管理者ではないと判定されること
     def test_regular_user_is_not_admin(self, sample_user):
         assert is_admin(sample_user) is False
 
@@ -19,22 +19,22 @@ class TestIsAdmin:
 @pytest.mark.django_db
 class TestCanEditTask:
 
-    # 作成者本人は編集可能と判定されることを確認
+    # 作成者本人は編集可能と判定されること
     def test_creator_can_edit(self, sample_user):
         task = Task.objects.create(title='Task', created_by=sample_user)
         assert can_edit_task(sample_user, task) is True
 
-    # 担当者本人は編集可能と判定されることを確認
+    # 担当者本人は編集可能と判定されること
     def test_assignee_can_edit(self, sample_user):
         task = Task.objects.create(title='Task', assigned_to=sample_user)
         assert can_edit_task(sample_user, task) is True
 
-    # 管理者はどのタスクでも編集可能と判定されることを確認
+    # 管理者はどのタスクでも編集可能と判定されること
     def test_admin_can_edit_any_task(self, admin_user, other_user):
         task = Task.objects.create(title='Task', created_by=other_user)
         assert can_edit_task(admin_user, task) is True
 
-    # 作成者でも担当者でも管理者でもないユーザーは編集不可と判定されることを確認
+    # 作成者でも担当者でも管理者でもないユーザーは編集不可と判定されること
     def test_unrelated_user_cannot_edit(self, sample_user, other_user):
         task = Task.objects.create(title='Task', created_by=other_user)
         assert can_edit_task(sample_user, task) is False
@@ -43,12 +43,12 @@ class TestCanEditTask:
 @pytest.mark.django_db
 class TestCanDeleteTask:
 
-    # 作成者本人は削除可能と判定されることを確認
+    # 作成者本人は削除可能と判定されること
     def test_creator_can_delete(self, sample_user):
         task = Task.objects.create(title='Task', created_by=sample_user)
         assert can_delete_task(sample_user, task) is True
 
-    # 作成者でも担当者でも管理者でもないユーザーは削除不可と判定されることを確認
+    # 作成者でも担当者でも管理者でもないユーザーは削除不可と判定されること
     def test_unrelated_user_cannot_delete(self, sample_user, other_user):
         task = Task.objects.create(title='Task', created_by=other_user)
         assert can_delete_task(sample_user, task) is False
@@ -57,7 +57,7 @@ class TestCanDeleteTask:
 @pytest.mark.django_db
 class TestGetApplicableManagementGroups:
 
-    # 主務部門そのものに割り当てられたグループがメンバーに適用されることを確認
+    # 主務部門そのものに割り当てられたグループがメンバーに適用されること
     def test_group_assigned_to_own_department_applies(self, sample_user):
         department = _create_department('開発部')
         _set_primary_department(sample_user, department)
@@ -68,7 +68,7 @@ class TestGetApplicableManagementGroups:
 
         assert applicable == [group]
 
-    # 親部門に割り当てられたグループがメンバーに適用されることを確認
+    # 親部門に割り当てられたグループがメンバーに適用されること
     def test_group_assigned_to_parent_department_applies(self, sample_user):
         company = Company.objects.create(name='サンプル株式会社')
         parent = Department.objects.create(company=company, name='本社')
@@ -82,7 +82,7 @@ class TestGetApplicableManagementGroups:
 
         assert applicable == [group]
 
-    # 兄弟部門に割り当てられたグループがメンバーに適用されることを確認
+    # 兄弟部門に割り当てられたグループがメンバーに適用されること
     def test_group_assigned_to_sibling_department_applies(self, sample_user):
         company = Company.objects.create(name='サンプル株式会社')
         parent = Department.objects.create(company=company, name='本社')
@@ -98,7 +98,7 @@ class TestGetApplicableManagementGroups:
 
         assert applicable == [group]
 
-    # 親・兄弟のいずれにも該当しない部門のグループは適用されないことを確認
+    # 親・兄弟のいずれにも該当しない部門のグループは適用されないこと
     def test_unrelated_department_group_does_not_apply(self, sample_user):
         company = Company.objects.create(name='サンプル株式会社')
         own_department = Department.objects.create(company=company, name='開発部')
@@ -111,7 +111,7 @@ class TestGetApplicableManagementGroups:
 
         assert applicable == []
 
-    # is_admin=Trueのグループはメンバーであれば部門に関係なく適用されることを確認
+    # is_admin=Trueのグループはメンバーであれば部門に関係なく適用されること
     def test_admin_group_applies_regardless_of_department(self, sample_user):
         group = ManagementGroup.objects.create(name='全社管理者グループ', is_admin=True)
         group.members.add(sample_user)
@@ -120,7 +120,7 @@ class TestGetApplicableManagementGroups:
 
         assert applicable == [group]
 
-    # メンバーでなければ、部門が一致していても適用されないことを確認
+    # メンバーでなければ、部門が一致していても適用されないこと
     def test_non_member_does_not_get_group_applied(self, sample_user):
         department = _create_department('開発部')
         _set_primary_department(sample_user, department)
@@ -130,7 +130,7 @@ class TestGetApplicableManagementGroups:
 
         assert applicable == []
 
-    # 主務部門が無い社員には、is_admin以外のグループが適用されないことを確認
+    # 主務部門が無い社員には、is_admin以外のグループが適用されないこと
     def test_employee_without_primary_department_only_gets_admin_groups(self, sample_user):
         department = _create_department('開発部')
         non_admin_group = ManagementGroup.objects.create(name='開発部グループ', department=department, permission_set_id=1)
@@ -142,7 +142,7 @@ class TestGetApplicableManagementGroups:
 
         assert applicable == [admin_group]
 
-    # Employeeが無いユーザーには、is_admin以外のグループが適用されないことを確認
+    # Employeeが無いユーザーには、is_admin以外のグループが適用されないこと
     def test_user_without_employee_only_gets_admin_groups(self, admin_user):
         department = _create_department('開発部')
         non_admin_group = ManagementGroup.objects.create(name='開発部グループ', department=department, permission_set_id=1)
@@ -154,7 +154,7 @@ class TestGetApplicableManagementGroups:
 
         assert applicable == [admin_group]
 
-    # 複数のグループが同時に適用されるケースを確認
+    # 複数のグループが同時に適用されること
     def test_multiple_groups_can_apply_simultaneously(self, sample_user):
         department = _create_department('開発部')
         _set_primary_department(sample_user, department)
@@ -167,7 +167,7 @@ class TestGetApplicableManagementGroups:
 
         assert set(applicable) == {own_group, admin_group}
 
-    # 部門階層にレコードが無い場合は自分自身のみ判定されることを確認
+    # 部門階層にレコードが無い場合は自分自身のみ判定されること
     def test_department_without_hierarchy_record_only_matches_self(self, sample_user):
         company = Company.objects.create(name='サンプル株式会社')
         own_department = Department.objects.create(company=company, name='開発部')
@@ -182,7 +182,7 @@ class TestGetApplicableManagementGroups:
 
         assert applicable == [matching_group]
 
-    # 子部門に割り当てられたグループは適用されないことを確認(一段階の上方向・横方向のみが対象で、下方向には適用されないことの確認)
+    # 子部門に割り当てられたグループは適用されないこと(一段階の上方向・横方向のみが対象で、下方向には適用されないことの確認)
     def test_group_assigned_to_child_department_does_not_apply(self, sample_user):
         company = Company.objects.create(name='サンプル株式会社')
         parent = Department.objects.create(company=company, name='本社')

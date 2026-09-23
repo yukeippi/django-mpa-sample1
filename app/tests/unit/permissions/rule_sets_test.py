@@ -10,19 +10,19 @@ REQUIRED_FIELD_KEYS = {'model', 'level', 'field', 'action', 'effect'}
 # rule_sets.REGISTRYの構造をテストするクラス
 class TestRuleSetsRegistry:
 
-    # REGISTRYのキーが各ルールセットファイルのIDと一致することを確認
+    # REGISTRYのキーが各ルールセットファイルのIDと一致すること
     def test_registry_keys_match_rule_set_ids(self):
         for permission_set_id, rule_set in rule_sets.REGISTRY.items():
             assert rule_set.ID == permission_set_id
 
-    # 各ルールセットがNAME/DESCRIPTION/RULESを持つことを確認
+    # 各ルールセットがNAME/DESCRIPTION/RULESを持つこと
     def test_each_rule_set_has_required_attributes(self):
         for rule_set in rule_sets.REGISTRY.values():
             assert isinstance(rule_set.NAME, str) and rule_set.NAME
             assert isinstance(rule_set.DESCRIPTION, str) and rule_set.DESCRIPTION
             assert isinstance(rule_set.RULES, list) and rule_set.RULES
 
-    # 各ルールが定義形式(必須キーの組み合わせ)を満たすことを確認
+    # 各ルールが定義形式(必須キーの組み合わせ)を満たすこと
     def test_each_rule_has_required_keys(self):
         for rule_set in rule_sets.REGISTRY.values():
             for rule in rule_set.RULES:
@@ -37,7 +37,7 @@ class TestRuleSetsRegistry:
                 else:
                     pytest.fail(f"未知のlevel: {rule['level']}")
 
-    # 同じmodel・level・action(・field)の組み合わせのルールが重複していないことを確認
+    # 同じmodel・level・action(・field)の組み合わせのルールが重複していないこと
     def test_no_duplicate_rules(self):
         for rule_set in rule_sets.REGISTRY.values():
             keys = [
