@@ -26,6 +26,24 @@ class TestTaskIndexView:
         assert response.status_code == 200
         assert len(response.context['tasks']) == 2
 
+    # 1ページには30件まで表示されること
+    def test_index_shows_up_to_30_tasks_per_page(self, auth_client):
+        for i in range(31):
+            Task.objects.create(title=f'Task {i}')
+
+        response = auth_client.get('/tasks/')
+
+        assert len(response.context['tasks']) == 30
+
+    # 31件目は2ページ目に表示されること
+    def test_index_shows_31st_task_on_second_page(self, auth_client):
+        for i in range(31):
+            Task.objects.create(title=f'Task {i}')
+
+        response = auth_client.get('/tasks/?page=2')
+
+        assert len(response.context['tasks']) == 1
+
 
 @pytest.mark.django_db
 class TestTaskShowView:
