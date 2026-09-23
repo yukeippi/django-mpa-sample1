@@ -83,6 +83,100 @@ class TestTaskAPI:
 
 
 @pytest.mark.django_db
+class TestTaskDetailPane:
+
+    # 一覧の行をクリックすると、画面を移動せずに右ペインが開き、そのタスクの詳細が表示されること
+    def test_click_row_opens_pane_with_task_detail(self, logged_in_page: Page, live_server_url, e2e_user):
+        Task.objects.create(title='Pane Task', description='ペインの説明 #1', status='in_progress', created_by=e2e_user)
+
+        logged_in_page.goto(f'{live_server_url}/tasks/')
+        logged_in_page.locator('.task-row', has_text='Pane Task').click()
+
+        expect(logged_in_page.locator('#task-detail-pane')).to_be_visible()
+        expect(logged_in_page.locator('#task-pane-title')).to_have_text('Pane Task')
+        expect(logged_in_page.locator('#task-detail-pane')).to_contain_text('ペインの説明 #1')
+        expect(logged_in_page).to_have_url(f'{live_server_url}/tasks/')
+
+    # ペインを開いたまま別の行をクリックすると、その行のタスクの詳細に切り替わること
+    def test_click_another_row_while_open_switches_to_that_task(self, logged_in_page: Page, live_server_url, e2e_user):
+        Task.objects.create(title='First Task', created_by=e2e_user)
+        Task.objects.create(title='Second Task', created_by=e2e_user)
+
+        logged_in_page.goto(f'{live_server_url}/tasks/')
+        logged_in_page.locator('.task-row', has_text='First Task').click()
+        expect(logged_in_page.locator('#task-pane-title')).to_have_text('First Task')
+        # locator.click()は要素が覆われていると覆いが消えるまで待つため、人の操作と同じく座標でクリックする
+        row = logged_in_page.locator('.task-row', has_text='Second Task').bounding_box()
+        logged_in_page.mouse.click(row['x'] + 20, row['y'] + row['height'] / 2)
+
+        expect(logged_in_page.locator('#task-detail-pane')).to_be_visible()
+        expect(logged_in_page.locator('#task-pane-title')).to_have_text('Second Task')
+
+    # ペインを開いている間も、一覧をスクロールできること
+    def test_list_can_scroll_while_pane_open(self, logged_in_page: Page, live_server_url, e2e_user):
+        for i in range(30):
+            Task.objects.create(title=f'Scroll Task {i:02d}', created_by=e2e_user)
+
+        logged_in_page.goto(f'{live_server_url}/tasks/')
+        logged_in_page.locator('.task-row').first.click()
+        expect(logged_in_page.locator('#task-detail-pane')).to_be_visible()
+        logged_in_page.mouse.move(400, 400)
+        logged_in_page.mouse.wheel(0, 500)
+        logged_in_page.wait_for_timeout(300)
+
+        assert logged_in_page.evaluate('window.scrollY') > 0
+
+    # ペインは × で閉じること
+    def test_close_button_closes_pane(self, logged_in_page: Page, live_server_url, e2e_user):
+        Task.objects.create(title='Pane Task', created_by=e2e_user)
+
+        logged_in_page.goto(f'{live_server_url}/tasks/')
+        logged_in_page.locator('.task-row', has_text='Pane Task').click()
+        expect(logged_in_page.locator('#task-detail-pane')).to_be_visible()
+        logged_in_page.click('#task-detail-pane .ds-offcanvas-close')
+
+        expect(logged_in_page.locator('#task-detail-pane')).to_be_hidden()
+
+    # 一覧をクリックした後でも、Esc でペインが閉じること
+    def test_esc_closes_pane_after_clicking_list(self, logged_in_page: Page, live_server_url, e2e_user):
+        Task.objects.create(title='First Task', created_by=e2e_user)
+        Task.objects.create(title='Second Task', created_by=e2e_user)
+
+        logged_in_page.goto(f'{live_server_url}/tasks/')
+        logged_in_page.locator('.task-row', has_text='First Task').click()
+        logged_in_page.locator('.task-row', has_text='Second Task').click()
+        expect(logged_in_page.locator('#task-pane-title')).to_have_text('Second Task')
+        logged_in_page.keyboard.press('Escape')
+
+        expect(logged_in_page.locator('#task-detail-pane')).to_be_hidden()
+
+    # ペインの外をクリックしてもペインは閉じないこと
+    def test_click_outside_pane_keeps_it_open(self, logged_in_page: Page, live_server_url, e2e_user):
+        Task.objects.create(title='Pane Task', created_by=e2e_user)
+
+        logged_in_page.goto(f'{live_server_url}/tasks/')
+        logged_in_page.locator('.task-row', has_text='Pane Task').click()
+        expect(logged_in_page.locator('#task-detail-pane')).to_be_visible()
+        # locator.click()は要素が覆われていると覆いが消えるまで待つため、人の操作と同じく座標でクリックする
+        heading = logged_in_page.locator('h1', has_text='タスク一覧').bounding_box()
+        logged_in_page.mouse.click(heading['x'] + 10, heading['y'] + heading['height'] / 2)
+        logged_in_page.wait_for_timeout(500)
+
+        expect(logged_in_page.locator('#task-detail-pane')).to_be_visible()
+
+    # ペインの「詳細ページを開く」から、そのタスクの詳細画面に移動できること
+    def test_open_detail_page_from_pane(self, logged_in_page: Page, live_server_url, e2e_user):
+        task = Task.objects.create(title='Pane Task', created_by=e2e_user)
+
+        logged_in_page.goto(f'{live_server_url}/tasks/')
+        logged_in_page.locator('.task-row', has_text='Pane Task').click()
+        logged_in_page.click('#pane-show-link')
+
+        expect(logged_in_page).to_have_url(f'{live_server_url}/tasks/{task.id}/')
+        expect(logged_in_page.locator('#task-title')).to_have_text('Pane Task')
+
+
+@pytest.mark.django_db
 class TestTaskCreatePage:
 
     # 新規作成フォームが表示されること

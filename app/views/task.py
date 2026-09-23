@@ -35,6 +35,17 @@ def show(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
     })
 
 
+# タスク詳細の右ペイン(一覧画面の行をクリックしたとき、htmxで中身だけを取得する)
+@login_required
+def pane(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
+    task = get_object_or_404(Task, pk=pk)
+    return render(request, 'app/task/_detail_pane.html', {
+        'task': task,
+        'can_edit': can_edit_task(request.user, task),
+        'can_delete': can_delete_task(request.user, task),
+    })
+
+
 # タスク新規作成
 @login_required
 def new(request: AuthenticatedHttpRequest) -> HttpResponse:

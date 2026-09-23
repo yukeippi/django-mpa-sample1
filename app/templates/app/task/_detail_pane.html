@@ -1,0 +1,42 @@
+{# 一覧画面の右ペイン(#task-detail-pane)の中身。app/views/task.py の pane が返し、htmx で差し替える #}
+<div class="ds-offcanvas-header">
+    <h2 class="ds-offcanvas-title" id="task-pane-title">{{ task.title }}</h2>
+    <button type="button" class="ds-offcanvas-close" data-bs-dismiss="offcanvas" aria-label="閉じる"></button>
+</div>
+<div class="ds-offcanvas-body">
+    <dl class="ds-detail">
+        <div class="ds-detail-item">
+            <dt class="ds-detail-label">説明</dt>
+            <dd class="ds-detail-value">{{ task.description|default:"なし" }}</dd>
+        </div>
+        <div class="ds-detail-item">
+            <dt class="ds-detail-label">ステータス</dt>
+            <dd class="ds-detail-value"><span class="ds-status{% if task.status == 'in_progress' %} ds-status--progress{% elif task.status == 'done' %} ds-status--done{% endif %}">{{ task.get_status_display }}</span></dd>
+        </div>
+        <div class="ds-detail-item">
+            <dt class="ds-detail-label">優先度</dt>
+            <dd class="ds-detail-value">{{ task.priority }}</dd>
+        </div>
+        <div class="ds-detail-item">
+            <dt class="ds-detail-label">担当者</dt>
+            <dd class="ds-detail-value">{{ task.assigned_to|default:"未割り当て" }}</dd>
+        </div>
+        <div class="ds-detail-item">
+            <dt class="ds-detail-label">作成者</dt>
+            <dd class="ds-detail-value">{{ task.created_by|default:"不明" }}</dd>
+        </div>
+        <div class="ds-detail-item">
+            <dt class="ds-detail-label">期限</dt>
+            <dd class="ds-detail-value">{{ task.due_date|date:"Y-m-d"|default:"なし" }}</dd>
+        </div>
+    </dl>
+</div>
+<div class="ds-offcanvas-footer">
+    <a href="{% url 'app:task_show' task.pk %}" id="pane-show-link" class="ds-btn">詳細ページを開く</a>
+    {% if can_edit %}
+    <a href="{% url 'app:task_edit' task.pk %}" id="pane-edit-link" class="ds-btn ds-btn-primary">編集</a>
+    {% endif %}
+    {% if can_delete %}
+    <a href="{% url 'app:task_delete' task.pk %}" id="pane-delete-link" class="ds-btn ds-btn-danger">削除</a>
+    {% endif %}
+</div>
