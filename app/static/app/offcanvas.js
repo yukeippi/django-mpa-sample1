@@ -4,7 +4,11 @@ document.addEventListener('keydown', function (event) {
     if (event.key !== 'Escape') {
         return;
     }
-    document.querySelectorAll('.ds-offcanvas.show').forEach(function (pane) {
-        bootstrap.Offcanvas.getOrCreateInstance(pane).hide();
+    // 開く途中(.showing)のペインも閉じるため、.show で絞り込まない(閉じているペインへの hide() は何もしない)
+    document.querySelectorAll('.ds-offcanvas').forEach(function (pane) {
+        var instance = bootstrap.Offcanvas.getInstance(pane);
+        if (instance) {
+            instance.hide();
+        }
     });
 });
