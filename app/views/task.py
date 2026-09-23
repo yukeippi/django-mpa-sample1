@@ -15,7 +15,7 @@ from app.permissions.roles import can_delete_task, can_edit_task
 @login_required
 def index(request: AuthenticatedHttpRequest) -> HttpResponse:
     tasks_qs = Task.objects.all()
-    paginator = Paginator(tasks_qs, 10)
+    paginator = Paginator(tasks_qs, 30)
     page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'app/task/index.html', {
         'tasks': page_obj,
@@ -32,6 +32,17 @@ def show(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
         'can_edit': can_edit_task(request.user, task),
         'can_delete': can_delete_task(request.user, task),
         'status_form': TaskStatusForm(instance=task),
+    })
+
+
+# タスク詳細の右ペイン(一覧画面の行をクリックしたとき、htmxで中身だけを取得する)
+@login_required
+def pane(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
+    task = get_object_or_404(Task, pk=pk)
+    return render(request, 'app/task/_detail_pane.html', {
+        'task': task,
+        'can_edit': can_edit_task(request.user, task),
+        'can_delete': can_delete_task(request.user, task),
     })
 
 

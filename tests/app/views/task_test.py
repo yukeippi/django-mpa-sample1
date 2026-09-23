@@ -26,6 +26,24 @@ class TestTaskIndexView:
         assert response.status_code == 200
         assert len(response.context['tasks']) == 2
 
+    # 1ページには30件まで表示されること
+    def test_index_shows_up_to_30_tasks_per_page(self, auth_client):
+        for i in range(31):
+            Task.objects.create(title=f'Task {i}')
+
+        response = auth_client.get('/tasks/')
+
+        assert len(response.context['tasks']) == 30
+
+    # 31件目は2ページ目に表示されること
+    def test_index_shows_31st_task_on_second_page(self, auth_client):
+        for i in range(31):
+            Task.objects.create(title=f'Task {i}')
+
+        response = auth_client.get('/tasks/?page=2')
+
+        assert len(response.context['tasks']) == 1
+
 
 @pytest.mark.django_db
 class TestTaskShowView:
@@ -82,6 +100,83 @@ class TestTaskShowView:
         response = auth_client.get(f'/tasks/{task.id}/')
 
         assert '<option value="in_progress" selected>' in response.content.decode()
+
+
+@pytest.mark.django_db
+class TestTaskPaneView:
+
+    # ペインの中身として、指定したタスクの詳細が返ること
+    def test_pane_returns_task_detail(self, auth_client, sample_user):
+        task = Task.objects.create(title='Pane Task', created_by=sample_user)
+
+        response = auth_client.get(f'/tasks/{task.id}/pane/')
+
+        assert response.status_code == 200
+        assert response.context['task'] == task
+
+    # 誰のタスクでもペインに表示できること(閲覧に所有者の制限は無い)
+    def test_pane_task_owned_by_other_user_returns_200(self, auth_client, other_user):
+        task = Task.objects.create(title='Other User Task', created_by=other_user)
+
+        response = auth_client.get(f'/tasks/{task.id}/pane/')
+
+        assert response.status_code == 200
+
+    # 存在しないタスクの場合404が返ること
+    def test_pane_nonexistent_task_returns_404(self, auth_client):
+        response = auth_client.get('/tasks/9999/pane/')
+
+        assert response.status_code == 404
+
+    # 未ログインの場合、ログインページにリダイレクトされること
+    def test_pane_requires_login(self, client, sample_user):
+        task = Task.objects.create(title='Pane Task', created_by=sample_user)
+
+        response = client.get(f'/tasks/{task.id}/pane/')
+
+        assert response.status_code == 302
+        assert response.url.startswith('/login/')
+
+    # 編集権限のあるユーザーには、ペインに「編集」が表示されること
+    def test_pane_by_editor_shows_edit_link(self, auth_client, sample_user):
+        task = Task.objects.create(title='Pane Task', created_by=sample_user)
+
+        response = auth_client.get(f'/tasks/{task.id}/pane/')
+
+        assert 'id="pane-edit-link"' in response.content.decode()
+
+    # 編集権限の無いユーザーには、ペインに「編集」が表示されないこと
+    def test_pane_by_unrelated_user_hides_edit_link(self, other_auth_client, sample_user):
+        task = Task.objects.create(title='Pane Task', created_by=sample_user)
+
+        response = other_auth_client.get(f'/tasks/{task.id}/pane/')
+
+        assert 'id="pane-edit-link"' not in response.content.decode()
+
+    # 削除権限のあるユーザーには、ペインに「削除」が表示されること
+    def test_pane_by_deleter_shows_delete_link(self, auth_client, sample_user):
+        task = Task.objects.create(title='Pane Task', created_by=sample_user)
+
+        response = auth_client.get(f'/tasks/{task.id}/pane/')
+
+        assert 'id="pane-delete-link"' in response.content.decode()
+
+    # 削除権限の無いユーザーには、ペインに「削除」が表示されないこと
+    def test_pane_by_unrelated_user_hides_delete_link(self, other_auth_client, sample_user):
+        task = Task.objects.create(title='Pane Task', created_by=sample_user)
+
+        response = other_auth_client.get(f'/tasks/{task.id}/pane/')
+
+        assert 'id="pane-delete-link"' not in response.content.decode()
+
+    # ペインに、詳細画面へのリンク「詳細ページを開く」が表示されること
+    def test_pane_shows_link_to_detail_page(self, other_auth_client, sample_user):
+        task = Task.objects.create(title='Pane Task', created_by=sample_user)
+
+        response = other_auth_client.get(f'/tasks/{task.id}/pane/')
+
+        assert 'id="pane-show-link"' in response.content.decode()
+        assert f'href="/tasks/{task.id}/"' in response.content.decode()
 
 
 @pytest.mark.django_db

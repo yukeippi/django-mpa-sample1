@@ -178,6 +178,7 @@ secondary を白抜きにしないのは、青・赤の塗りつぶしボタン�
 - `offcanvas` `offcanvas-end` は Bootstrap の JS が使うクラスなので、`ds-offcanvas` と併記する(見た目は付かない)。
 - 背景を暗くしない設定では、Bootstrap はフォーカスがペインの中にあるときしか Esc を受け付けない。一覧をクリックした後でも Esc で閉じられるよう、`app/static/app/offcanvas.js` を、ペインを置く画面でだけ読み込む(`modal.js` と同じ扱い)。
 - 開く操作では `bootstrap.Offcanvas.getOrCreateInstance(<ペイン>).show()` を呼ぶ。`data-bs-toggle="offcanvas"` は使わない(開閉の切り替えなので、開いているときに別の行を押すとペインが閉じてしまう)。× は `<button type="button" data-bs-dismiss="offcanvas">`。
+- 中身をサーバーから取得する場合は、開く要素に htmx の `hx-get` と `hx-target="#<id>"` を付け、中身が差し替わった後(`htmx:afterSwap`)に `show()` で開く。前に開いたときの中身が一瞬見えるのを防ぐため。使用例: タスク一覧(`app/templates/app/task/index.html`、中身は `_detail_pane.html`)。
 - 本文には詳細画面と同じ `ds-detail` を置く。本文が長いときは本文だけがスクロールし、ヘッダーとフッターは固定される。
 - フッターの操作ボタンは、ページと同じく secondary → primary → danger の順。
 - 幅のバリエーションは設けない(Bootstrap の offcanvas も幅は1種類)。

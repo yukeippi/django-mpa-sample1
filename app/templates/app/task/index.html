@@ -1,4 +1,5 @@
 {% extends 'app/task/base.html' %}
+{% load static %}
 
 {% block title %}タスク一覧{% endblock %}
 
@@ -23,7 +24,7 @@
             </thead>
             <tbody>
                 {% for task in tasks %}
-                <tr class="task-row" data-task-id="{{ task.id }}" data-href="{% url 'app:task_show' task.pk %}">
+                <tr class="task-row" data-task-id="{{ task.id }}" hx-get="{% url 'app:task_pane' task.pk %}" hx-target="#task-detail-pane" aria-controls="task-detail-pane">
                     <td>{{ task.title }}</td>
                     <td><span class="ds-status{% if task.status == 'in_progress' %} ds-status--progress{% elif task.status == 'done' %} ds-status--done{% endif %}">{{ task.get_status_display }}</span></td>
                     <td class="ds-muted">{{ task.priority }}</td>
@@ -36,14 +37,19 @@
 {% else %}
     <p id="no-tasks" class="ds-empty">タスクがありません。</p>
 {% endif %}
+
+{# 右ペイン。行をクリックすると、中身(_detail_pane.html)を htmx で差し替えてから開く。開いている間も一覧を操作できる #}
+<div class="offcanvas offcanvas-end ds-offcanvas" tabindex="-1" id="task-detail-pane" aria-labelledby="task-pane-title" data-bs-scroll="true" data-bs-backdrop="false"></div>
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'app/offcanvas.js' %}"></script>
 <script>
-document.querySelectorAll('.task-row').forEach(function (row) {
-    row.addEventListener('click', function () {
-        window.location.href = row.dataset.href;
-    });
+// 行のクリックで取得したペインの中身が差し替わったら、ペインを開く(開閉は Bootstrap の offcanvas.js)
+document.body.addEventListener('htmx:afterSwap', function (event) {
+    if (event.detail.target.id === 'task-detail-pane') {
+        bootstrap.Offcanvas.getOrCreateInstance(event.detail.target).show();
+    }
 });
 </script>
 {% endblock %}
