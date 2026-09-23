@@ -1,5 +1,6 @@
 import pytest
 from playwright.sync_api import Page, expect
+from app.models import Task
 
 
 # タスク一覧ページのE2Eテスト
@@ -108,7 +109,6 @@ class TestTaskEditPage:
 
     # タスクを編集すると詳細ページにリダイレクトされ、成功メッセージが表示されることを確認
     def test_edit_task_updates_and_redirects(self, logged_in_page: Page, live_server_url, e2e_user):
-        from app.models import Task
         task = Task.objects.create(title='Before Edit', status='todo', priority=3, created_by=e2e_user)
 
         logged_in_page.goto(f'{live_server_url}/tasks/{task.id}/edit/')
@@ -124,7 +124,6 @@ class TestTaskDeletePage:
 
     # タスクを削除すると一覧ページにリダイレクトされ、成功メッセージが表示されることを確認
     def test_delete_task_removes_and_redirects_to_index(self, logged_in_page: Page, live_server_url, e2e_user):
-        from app.models import Task
         task = Task.objects.create(title='To Delete', created_by=e2e_user)
 
         logged_in_page.goto(f'{live_server_url}/tasks/{task.id}/delete/')

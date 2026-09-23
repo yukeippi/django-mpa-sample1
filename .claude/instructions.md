@@ -13,7 +13,7 @@
 4. **ビュー** — View Naming Rules / View Method-Branch Rules / Read Rules / View Write Rules / Service Rules
 5. **テンプレートとCSS** — Layout Rules / Template Directory Rules / Template Rules / Partial Template Rules / CSS Rules
 6. **Pythonコードの書き方** — Control Flow Rules / Function Signature Rules / Inheritance Rules / Comment Rules
-7. **テスト** — Test-First Rules / Test Specification Rules / Test Layer Rules / Test Double Rules
+7. **テスト** — Test-First Rules / Test Specification Rules / Test Layer Rules / Test Double Rules / Test Import Rules
 8. **意思決定の記録** — ADR Rules
 
 ## 全体構成
@@ -1258,6 +1258,35 @@ def test_complete_notifies_assignee(auth_client, sample_user, django_capture_on_
     # メール送信はDjangoがmail.outboxに保持するため、モックせずに宛先・内容を検証できる
     assert len(mail.outbox) == 1
     assert mail.outbox[0].to == [sample_user.email]
+```
+
+### Test Import Rules
+
+テストコード(`conftest.py`のフィクスチャを含む)のimportは、ファイルの上部にまとめる。テスト関数やフィクスチャの中にimportを書かない。
+
+- **循環参照は起きない**: 関数内にimportを書く主な理由は循環参照の回避だが、テストコードは他のモジュールからimportされないため、その理由が当てはまらない
+- **依存が一目で分かる**: 上部にまとまっていれば、そのファイルが何に依存しているかを最初に把握できる。関数ごとに書くと同じimportが重複し、依存が散らばる
+- **モデルも上部でimportできる**: pytest-djangoはテストの収集前にDjangoを初期化するため、モデルのimportをフィクスチャの中に遅らせる必要はない
+
+#### Example
+
+```python
+# 避ける書き方(フィクスチャの中でimportしている)
+@pytest.fixture
+def sample_user(db):
+    from django.contrib.auth.models import User
+    return User.objects.create_user(username='testuser')
+```
+
+```python
+# 良い書き方(ファイルの上部にまとめる)
+import pytest
+from django.contrib.auth.models import User
+
+
+@pytest.fixture
+def sample_user(db):
+    return User.objects.create_user(username='testuser')
 ```
 
 ## 意思決定の記録

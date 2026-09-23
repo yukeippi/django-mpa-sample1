@@ -1,5 +1,6 @@
 import pytest
 from app.forms.management_group import ManagementGroupForm
+from app.models import Company, Department
 
 
 # ManagementGroupFormのテストクラス
@@ -49,6 +50,5 @@ class TestManagementGroupForm:
 
 @pytest.fixture
 def sample_department():
-    from app.models import Company, Department
     company = Company.objects.create(name='サンプル株式会社')
     return Department.objects.create(company=company, name='開発部')
