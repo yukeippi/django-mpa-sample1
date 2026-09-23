@@ -1,5 +1,6 @@
 import pytest
 from playwright.sync_api import Page, expect
+from app.models import Task
 
 
 # タスク一覧ページのE2Eテスト
@@ -116,6 +117,23 @@ class TestTaskEditPage:
         logged_in_page.click('#task-form-submit')
 
         expect(logged_in_page.locator('#task-title')).to_have_text('After Edit')
+        expect(logged_in_page.locator('.messages')).to_contain_text('タスクを更新しました。')
+
+
+@pytest.mark.django_db
+class TestTaskStatusModal:
+
+    # 詳細画面の「変更」からモーダルでステータスを選んで保存すると、詳細画面のステータス表示が変わること
+    def test_change_status_in_modal_updates_detail(self, logged_in_page: Page, live_server_url, e2e_user):
+        task = Task.objects.create(title='Status Task', status='todo', priority=3, created_by=e2e_user)
+
+        logged_in_page.goto(f'{live_server_url}/tasks/{task.id}/')
+        logged_in_page.click('#change-status-button')
+        expect(logged_in_page.locator('#task-status-modal')).to_be_visible()
+        logged_in_page.select_option('#task-status-modal select', 'done')
+        logged_in_page.click('#task-status-submit')
+
+        expect(logged_in_page.locator('#task-status')).to_have_text('Done')
         expect(logged_in_page.locator('.messages')).to_contain_text('タスクを更新しました。')
 
 

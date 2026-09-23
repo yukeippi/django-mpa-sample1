@@ -27,3 +27,14 @@ class TaskForm(forms.ModelForm):
         value = self.cleaned_data['description']
         validate_description_contains_issue_reference(value)
         return value
+
+
+# タスク詳細画面のモーダルから、ステータスだけを変更するフォーム
+class TaskStatusForm(forms.ModelForm):
+
+    class Meta:
+        model = Task
+        fields = ['status']
+        widgets = {
+            'status': forms.Select(attrs={'class': 'ds-input'}),
+        }

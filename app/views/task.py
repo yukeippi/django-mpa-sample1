@@ -4,8 +4,9 @@ from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 from app.lib.types import AuthenticatedHttpRequest
-from app.forms import TaskForm
+from app.forms import TaskForm, TaskStatusForm
 from app.models import Task
 from app.permissions.roles import can_delete_task, can_edit_task
 
@@ -30,6 +31,7 @@ def show(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
         'task': task,
         'can_edit': can_edit_task(request.user, task),
         'can_delete': can_delete_task(request.user, task),
+        'status_form': TaskStatusForm(instance=task),
     })
 
 
@@ -50,6 +52,16 @@ def edit(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
     if request.method == 'POST':
         return _update_task(request, task)
     return _display_edit_form(request, task)
+
+
+# タスクのステータス変更(詳細画面のモーダルから送信する。画面を持たないためPOSTのみ)
+@login_required
+@require_POST
+def status(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
+    task = get_object_or_404(Task, pk=pk)
+    if not can_edit_task(request.user, task):
+        raise PermissionDenied
+    return _update_task_status(request, task)
 
 
 # タスク削除
@@ -122,3 +134,14 @@ def _update_task(request, task):
 # タスク編集フォームのレンダリング
 def _render_edit_form(request, task, form):
     return render(request, 'app/task/edit.html', {'form': form, 'task': task})
+
+
+# タスクのステータスを更新する(選択肢外の値は画面操作では送られないため、フォームを再表示せずエラーメッセージだけ出す)
+def _update_task_status(request, task):
+    form = TaskStatusForm(request.POST, instance=task)
+    if not form.is_valid():
+        messages.error(request, 'ステータスを変更できませんでした。')
+        return redirect('app:task_show', pk=task.pk)
+    form.save()
+    messages.success(request, 'タスクを更新しました。')
+    return redirect('app:task_show', pk=task.pk)

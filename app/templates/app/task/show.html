@@ -1,4 +1,5 @@
 {% extends 'app/task/base.html' %}
+{% load static %}
 
 {% block title %}{{ task.title }}{% endblock %}
 
@@ -24,7 +25,12 @@
         </div>
         <div class="ds-detail-item">
             <dt class="ds-detail-label">ステータス</dt>
-            <dd class="ds-detail-value" id="task-status"><span class="ds-status{% if task.status == 'in_progress' %} ds-status--progress{% elif task.status == 'done' %} ds-status--done{% endif %}">{{ task.get_status_display }}</span></dd>
+            <dd class="ds-detail-value ds-actions">
+                <span id="task-status" class="ds-status{% if task.status == 'in_progress' %} ds-status--progress{% elif task.status == 'done' %} ds-status--done{% endif %}">{{ task.get_status_display }}</span>
+                {% if can_edit %}
+                <button type="button" id="change-status-button" class="ds-btn ds-btn-sm" data-bs-toggle="modal" data-bs-target="#task-status-modal">変更</button>
+                {% endif %}
+            </dd>
         </div>
         <div class="ds-detail-item">
             <dt class="ds-detail-label">優先度</dt>
@@ -44,4 +50,36 @@
         </div>
     </dl>
 </div>
+
+{% if can_edit %}
+<div class="modal fade ds-modal" id="task-status-modal" tabindex="-1" aria-labelledby="task-status-modal-title" aria-hidden="true">
+    <div class="modal-dialog ds-modal-dialog">
+        <form class="ds-modal-content" method="post" action="{% url 'app:task_status' task.pk %}">
+            {% csrf_token %}
+            <div class="ds-modal-header">
+                <h2 class="ds-modal-title" id="task-status-modal-title">ステータスを変更</h2>
+                <button type="button" class="ds-modal-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+            </div>
+            <div class="ds-modal-body">
+                <div class="ds-form">
+                    <div class="ds-field">
+                        <label for="{{ status_form.status.id_for_label }}" class="ds-label">ステータス</label>
+                        {{ status_form.status }}
+                    </div>
+                </div>
+            </div>
+            <div class="ds-modal-footer">
+                <button type="button" class="ds-btn" data-bs-dismiss="modal">キャンセル</button>
+                <button type="submit" id="task-status-submit" class="ds-btn ds-btn-primary">保存</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if can_edit %}
+<script src="{% static 'app/modal.js' %}"></script>
+{% endif %}
 {% endblock %}
