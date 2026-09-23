@@ -6,7 +6,7 @@ from playwright.sync_api import Page, expect
 @pytest.mark.django_db
 class TestEmployeeCrudFlow:
 
-    # 新規作成フォームから社員を登録すると詳細ページに遷移することを確認
+    # 新規作成フォームから社員を登録すると詳細ページに遷移すること
     def test_create_employee_and_view_detail(self, logged_in_page: Page, live_server_url):
         logged_in_page.goto(f'{live_server_url}/employees/new/')
 
@@ -19,7 +19,7 @@ class TestEmployeeCrudFlow:
         expect(logged_in_page.locator('#employee-number')).to_have_text('E9100')
         expect(logged_in_page.locator('#employee-full-name')).to_contain_text('太郎')
 
-    # 詳細ページから編集し、氏名が更新されることを確認
+    # 詳細ページから編集し、氏名が更新されること
     def test_edit_employee_updates_name(self, logged_in_page: Page, live_server_url):
         logged_in_page.goto(f'{live_server_url}/employees/new/')
         logged_in_page.fill('#id_employee_number', 'E9200')
@@ -34,7 +34,7 @@ class TestEmployeeCrudFlow:
 
         expect(logged_in_page.locator('#employee-full-name')).to_contain_text('佐藤')
 
-    # 削除確認ページから削除すると一覧ページに戻り、対象が表示されなくなることを確認
+    # 削除確認ページから削除すると一覧ページに戻り、対象が表示されなくなること
     def test_delete_employee_removes_from_list(self, logged_in_page: Page, live_server_url):
         logged_in_page.goto(f'{live_server_url}/employees/new/')
         logged_in_page.fill('#id_employee_number', 'E9300')
@@ -54,7 +54,7 @@ class TestEmployeeCrudFlow:
 @pytest.mark.django_db
 class TestEmployeeAccessControl:
 
-    # 未ログインで社員一覧にアクセスするとログインページにリダイレクトされることを確認
+    # 未ログインで社員一覧にアクセスするとログインページにリダイレクトされること
     def test_employee_index_redirects_anonymous_user_to_login(self, page: Page, live_server_url):
         page.goto(f'{live_server_url}/employees/')
         expect(page).to_have_url(f'{live_server_url}/login/?next=/employees/')

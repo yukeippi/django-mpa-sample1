@@ -6,7 +6,7 @@ from django.test import override_settings
 # app/management/commands/notes.pyのテストクラス
 class TestNotesCommand:
 
-    # TODOコメントが1件も無い場合、その旨のメッセージが出力されることを確認
+    # TODOコメントが1件も無い場合、その旨のメッセージが出力されること
     def test_no_notes_found(self, tmp_path):
         (tmp_path / 'app').mkdir()
         (tmp_path / 'app' / 'sample.py').write_text('# 通常のコメント\n')
@@ -17,7 +17,7 @@ class TestNotesCommand:
 
         assert '該当するコメントは見つかりませんでした。' in out.getvalue()
 
-    # Pythonファイル中のTODOコメントが検出されることを確認
+    # Pythonファイル中のTODOコメントが検出されること
     def test_detects_todo_in_python_file(self, tmp_path):
         (tmp_path / 'app').mkdir()
         (tmp_path / 'app' / 'sample.py').write_text('# 通常のコメント\n# TODO: 後で直す\n')
@@ -30,7 +30,7 @@ class TestNotesCommand:
         assert 'app/sample.py' in output
         assert '[2] TODO 後で直す' in output
 
-    # HTMLファイル中のTODOコメントが検出されることを確認
+    # HTMLファイル中のTODOコメントが検出されること
     def test_detects_todo_in_html_file(self, tmp_path):
         (tmp_path / 'app').mkdir()
         (tmp_path / 'app' / 'sample.html').write_text('<!-- TODO: テンプレートを整える -->\n')
@@ -43,7 +43,7 @@ class TestNotesCommand:
         assert 'app/sample.html' in output
         assert '[1] TODO テンプレートを整える' in output
 
-    # --tagオプションで指定したタグのみ抽出されることを確認
+    # --tagオプションで指定したタグのみ抽出されること
     def test_tag_option_filters_by_tag(self, tmp_path):
         (tmp_path / 'app').mkdir()
         (tmp_path / 'app' / 'sample.py').write_text('# TODO: todoの方\n# FIXME: fixmeの方\n')
@@ -56,7 +56,7 @@ class TestNotesCommand:
         assert 'fixmeの方' in output
         assert 'todoの方' not in output
 
-    # migrationsディレクトリ配下は除外されることを確認
+    # migrationsディレクトリ配下は除外されること
     def test_excludes_migrations_directory(self, tmp_path):
         migrations_dir = tmp_path / 'app' / 'migrations'
         migrations_dir.mkdir(parents=True)

@@ -5,13 +5,13 @@ import pytest
 @pytest.mark.django_db
 class TestLoginView:
 
-    # GETリクエストでログインフォームが表示されることを確認
+    # GETリクエストでログインフォームが表示されること
     def test_get_returns_form(self, client):
         response = client.get('/login/')
         assert response.status_code == 200
         assert 'form' in response.context
 
-    # 正しい認証情報(社員番号+パスワード)でログインするとタスク一覧にリダイレクトされることを確認
+    # 正しい認証情報(社員番号+パスワード)でログインするとタスク一覧にリダイレクトされること
     def test_post_valid_credentials_logs_in_and_redirects(self, client, sample_user):
         response = client.post('/login/', {
             'username': sample_user.employee.employee_number,
@@ -22,7 +22,7 @@ class TestLoginView:
         assert response.url == '/tasks/'
         assert response.wsgi_request.user.is_anonymous is False
 
-    # 誤った認証情報の場合、ログインできずフォームが再表示されることを確認
+    # 誤った認証情報の場合、ログインできずフォームが再表示されること
     def test_post_invalid_credentials_redisplays_form(self, client, sample_user):
         response = client.post('/login/', {
             'username': sample_user.employee.employee_number,
@@ -37,7 +37,7 @@ class TestLoginView:
 @pytest.mark.django_db
 class TestLogoutView:
 
-    # POSTするとログアウトされ、ログインページにリダイレクトされることを確認
+    # POSTするとログアウトされ、ログインページにリダイレクトされること
     def test_post_logs_out_and_redirects(self, auth_client):
         response = auth_client.post('/logout/')
 

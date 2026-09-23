@@ -6,7 +6,7 @@ from app.forms.employee import EmployeeForm
 @pytest.mark.django_db
 class TestEmployeeFormCreate:
 
-    # 有効なデータでフォームが妥当と判定されることを確認
+    # 有効なデータでフォームが妥当と判定されること
     def test_valid_data_is_valid(self):
         form = EmployeeForm(data={
             'employee_number': 'E0100',
@@ -16,7 +16,7 @@ class TestEmployeeFormCreate:
         }, is_new=True)
         assert form.is_valid()
 
-    # 新規作成時はパスワードが必須であることを確認
+    # 新規作成時はパスワードが必須であること
     def test_password_is_required_on_create(self):
         form = EmployeeForm(data={
             'employee_number': 'E0100',
@@ -31,7 +31,7 @@ class TestEmployeeFormCreate:
 @pytest.mark.django_db
 class TestEmployeeFormEdit:
 
-    # 編集時はパスワード未入力でも妥当と判定されることを確認
+    # 編集時はパスワード未入力でも妥当と判定されること
     def test_password_is_optional_on_edit(self):
         form = EmployeeForm(data={
             'employee_number': 'E0100',

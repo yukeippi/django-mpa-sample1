@@ -6,7 +6,7 @@ from app.forms.management_group import ManagementGroupForm
 @pytest.mark.django_db
 class TestManagementGroupForm:
 
-    # 全社管理者として有効なデータでフォームが妥当と判定されることを確認
+    # 全社管理者として有効なデータでフォームが妥当と判定されること
     def test_valid_data_is_valid(self, sample_user):
         form = ManagementGroupForm(data={
             'name': '開発チーム',
@@ -15,7 +15,7 @@ class TestManagementGroupForm:
         })
         assert form.is_valid()
 
-    # 名前が空の場合、フォームが無効と判定されることを確認
+    # 名前が空の場合、フォームが無効と判定されること
     def test_blank_name_is_invalid(self):
         form = ManagementGroupForm(data={
             'name': '',
@@ -25,7 +25,7 @@ class TestManagementGroupForm:
         assert not form.is_valid()
         assert 'name' in form.errors
 
-    # メンバー未選択でも妥当と判定されることを確認(members=blank許可)
+    # メンバー未選択でも妥当と判定されること(members=blank許可)
     def test_no_members_is_valid(self):
         form = ManagementGroupForm(data={
             'name': '開発チーム',
@@ -34,7 +34,7 @@ class TestManagementGroupForm:
         })
         assert form.is_valid()
 
-    # 全社管理者でなく、部門・権限セット番号を指定していれば妥当と判定されることを確認
+    # 全社管理者でなく、部門・権限セット番号を指定していれば妥当と判定されること
     # (is_adminと部門・権限セットの整合性そのものはService事前条件チェックの担当。Validation Rules参照)
     def test_valid_non_admin_data_is_valid(self, sample_department):
         form = ManagementGroupForm(data={

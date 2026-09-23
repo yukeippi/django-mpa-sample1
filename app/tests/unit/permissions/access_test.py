@@ -9,7 +9,7 @@ COMPANY_SCOPED_DEPARTMENT_MANAGER = 2
 @pytest.mark.django_db
 class TestIsAdminBypass:
 
-    # is_admin=Trueのグループに所属していれば、どのモデル・アクションでも常にallowと判定されることを確認
+    # is_admin=Trueのグループに所属していれば、どのモデル・アクションでも常にallowと判定されること
     def test_admin_group_member_can_do_anything(self, sample_user):
         company = Company.objects.create(name='サンプル株式会社')
         admin_group = ManagementGroup.objects.create(name='全社管理者', is_admin=True)
@@ -25,7 +25,7 @@ class TestIsAdminBypass:
 @pytest.mark.django_db
 class TestScopeMatching:
 
-    # scope={}(絞り込み無し)のルールはどのレコードにもallowすることを確認
+    # scope={}(絞り込み無し)のルールはどのレコードにもallowすること
     def test_empty_scope_matches_any_record(self, sample_user):
         anchor = _create_department('総務部', 'テスト工業株式会社')
         _set_primary_department(sample_user, anchor)
@@ -33,7 +33,7 @@ class TestScopeMatching:
 
         assert can_view(sample_user, 'Department', anchor) is True
 
-    # 該当するeffect=denyのルールがあればdenyと判定されることを確認
+    # 該当するeffect=denyのルールがあればdenyと判定されること
     def test_explicit_deny_rule_denies(self, sample_user):
         anchor = _create_department('総務部', 'テスト工業株式会社')
         _set_primary_department(sample_user, anchor)
@@ -41,7 +41,7 @@ class TestScopeMatching:
 
         assert can_edit(sample_user, 'Department', anchor) is False
 
-    # ルールが1件も無いモデル・アクションはデフォルトでdenyと判定されることを確認
+    # ルールが1件も無いモデル・アクションはデフォルトでdenyと判定されること
     def test_no_matching_rule_defaults_to_deny(self, sample_user):
         anchor = _create_department('総務部', 'テスト工業株式会社')
         _set_primary_department(sample_user, anchor)
@@ -50,7 +50,7 @@ class TestScopeMatching:
 
         assert can_view(sample_user, 'Company', company) is False
 
-    # scopeのフィールドパスが一致する場合にallowと判定されることを確認
+    # scopeのフィールドパスが一致する場合にallowと判定されること
     def test_scope_field_path_matches(self, sample_user):
         anchor = _create_department('人事部', 'サンプル株式会社')
         _set_primary_department(sample_user, anchor)
@@ -59,7 +59,7 @@ class TestScopeMatching:
 
         assert can_view(sample_user, 'Department', matching_department) is True
 
-    # scopeのフィールドパスが一致しない場合、そのグループは棄権しdenyになることを確認
+    # scopeのフィールドパスが一致しない場合、そのグループは棄権しdenyになること
     def test_scope_field_path_mismatch_defaults_to_deny(self, sample_user):
         anchor = _create_department('人事部', 'サンプル株式会社')
         _set_primary_department(sample_user, anchor)
@@ -73,7 +73,7 @@ class TestScopeMatching:
 @pytest.mark.django_db
 class TestMultiGroupMerge:
 
-    # 一方のグループがscope不一致で棄権しても、もう一方のグループのallowが有効になることを確認
+    # 一方のグループがscope不一致で棄権しても、もう一方のグループのallowが有効になること
     def test_abstaining_group_does_not_block_other_groups_allow(self, sample_user):
         anchor = _create_department('人事部', 'サンプル株式会社')
         _set_primary_department(sample_user, anchor)
@@ -85,7 +85,7 @@ class TestMultiGroupMerge:
         # company_scoped_department_managerはscope不一致で棄権するが、department_viewer_allが常にallowするため最終的にTrue
         assert can_view(sample_user, 'Department', target_department) is True
 
-    # 一方のグループが明示的にdeny、もう一方がallowの場合、deny優先で最終的にdenyになることを確認
+    # 一方のグループが明示的にdeny、もう一方がallowの場合、deny優先で最終的にdenyになること
     def test_explicit_deny_overrides_other_groups_allow(self, sample_user):
         anchor = _create_department('人事部', 'サンプル株式会社')
         _set_primary_department(sample_user, anchor)
@@ -99,7 +99,7 @@ class TestMultiGroupMerge:
 @pytest.mark.django_db
 class TestFieldLevelPermission:
 
-    # フィールド権限にdenyルールがある場合、can_edit(..., field=...)がFalseになることを確認
+    # フィールド権限にdenyルールがある場合、can_edit(..., field=...)がFalseになること
     def test_field_level_deny(self, sample_user):
         anchor = _create_department('人事部', 'サンプル株式会社')
         _set_primary_department(sample_user, anchor)
@@ -108,7 +108,7 @@ class TestFieldLevelPermission:
 
         assert can_edit(sample_user, 'Department', department, field='company') is False
 
-    # フィールド権限にルールが無い場合、デフォルトdenyになることを確認
+    # フィールド権限にルールが無い場合、デフォルトdenyになること
     def test_field_level_no_rule_defaults_to_deny(self, sample_user):
         anchor = _create_department('人事部', 'サンプル株式会社')
         _set_primary_department(sample_user, anchor)
@@ -121,7 +121,7 @@ class TestFieldLevelPermission:
 @pytest.mark.django_db
 class TestCanCreate:
 
-    # フォーム入力値から組み立てた未保存インスタンスのscopeが一致すればallowと判定されることを確認
+    # フォーム入力値から組み立てた未保存インスタンスのscopeが一致すればallowと判定されること
     def test_create_with_matching_scope_allows(self, sample_user):
         anchor = _create_department('人事部', 'サンプル株式会社')
         _set_primary_department(sample_user, anchor)
@@ -130,7 +130,7 @@ class TestCanCreate:
 
         assert can_create(sample_user, 'Department', candidate) is True
 
-    # 未保存インスタンスのscopeが一致しなければdenyと判定されることを確認
+    # 未保存インスタンスのscopeが一致しなければdenyと判定されること
     def test_create_with_non_matching_scope_denies(self, sample_user):
         anchor = _create_department('人事部', 'サンプル株式会社')
         _set_primary_department(sample_user, anchor)
@@ -144,7 +144,7 @@ class TestCanCreate:
 @pytest.mark.django_db
 class TestCanDisplayCreateForm:
 
-    # createにallowのルールを持つグループに所属していれば、具体的な値が無くてもTrueと判定されることを確認
+    # createにallowのルールを持つグループに所属していれば、具体的な値が無くてもTrueと判定されること
     def test_true_when_any_group_allows_create(self, sample_user):
         anchor = _create_department('人事部', 'サンプル株式会社')
         _set_primary_department(sample_user, anchor)
@@ -152,7 +152,7 @@ class TestCanDisplayCreateForm:
 
         assert can_display_create_form(sample_user, 'Department') is True
 
-    # createがdeny(または未定義)のルールセットしか無ければFalseと判定されることを確認
+    # createがdeny(または未定義)のルールセットしか無ければFalseと判定されること
     def test_false_when_no_group_allows_create(self, sample_user):
         anchor = _create_department('総務部', 'テスト工業株式会社')
         _set_primary_department(sample_user, anchor)
@@ -160,7 +160,7 @@ class TestCanDisplayCreateForm:
 
         assert can_display_create_form(sample_user, 'Department') is False
 
-    # どの管理グループにも所属していなければFalseと判定されることを確認
+    # どの管理グループにも所属していなければFalseと判定されること
     def test_false_when_user_has_no_groups(self, sample_user):
         assert can_display_create_form(sample_user, 'Department') is False
 

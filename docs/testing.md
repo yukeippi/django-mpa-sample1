@@ -103,13 +103,13 @@ from app.models import Task
 @pytest.mark.django_db
 class TestTaskModel:
 
-    # タスクを作成できることを確認
+    # タスクを作成できること
     def test_create_task(self):
         task = Task.objects.create(title='Test Task')
         assert task.id is not None
         assert task.title == 'Test Task'
 
-    # フィクスチャを使用したテスト
+    # 担当者を指定してタスクを作成できること(担当者はフィクスチャで用意する)
     def test_with_user(self, sample_user):
         task = Task.objects.create(
             title='User Task',
@@ -129,7 +129,7 @@ from playwright.sync_api import Page, expect
 @pytest.mark.django_db
 class TestHomePage:
 
-    # ホームページが正常に読み込まれることを確認
+    # ホームページが正常に読み込まれること
     def test_home_page_loads(self, page: Page, live_server_url):
         page.goto(live_server_url)
 
@@ -137,7 +137,7 @@ class TestHomePage:
         title_element = page.locator('#title')
         expect(title_element).to_have_text('Task Manager')
 
-    # テストデータを使用したE2Eテスト
+    # タスクがある場合、一覧にタスクのテーブルが表示されること(タスクはフィクスチャで用意する)
     def test_with_data(self, page: Page, live_server_url, setup_test_data):
         page.goto(f'{live_server_url}/tasks/')
 

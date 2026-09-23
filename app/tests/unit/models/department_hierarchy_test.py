@@ -7,7 +7,7 @@ from app.models import Company, Department, DepartmentHierarchy
 @pytest.mark.django_db
 class TestDepartmentHierarchyModel:
 
-    # 親部門を指定して作成できることを確認
+    # 親部門を指定して作成できること
     def test_create_with_parent(self):
         company = Company.objects.create(name='サンプル株式会社')
         parent = Department.objects.create(company=company, name='本社')
@@ -19,7 +19,7 @@ class TestDepartmentHierarchyModel:
         assert hierarchy.department == child
         assert hierarchy.parent_department == parent
 
-    # 親部門なし(最上位の部門)で作成できることを確認
+    # 親部門なし(最上位の部門)で作成できること
     def test_create_without_parent(self):
         company = Company.objects.create(name='サンプル株式会社')
         department = Department.objects.create(company=company, name='本社')
@@ -29,7 +29,7 @@ class TestDepartmentHierarchyModel:
         assert hierarchy.id is not None
         assert hierarchy.parent_department is None
 
-    # 同じ部門で2件目のレコードを作成しようとするとエラーになることを確認(1部門につき1レコード。OneToOneField由来のDB制約)
+    # 同じ部門で2件目のレコードを作成しようとするとエラーになること(1部門につき1レコード。OneToOneField由来のDB制約)
     def test_department_must_be_unique(self):
         company = Company.objects.create(name='サンプル株式会社')
         department = Department.objects.create(company=company, name='営業部')
@@ -38,7 +38,7 @@ class TestDepartmentHierarchyModel:
         with pytest.raises(IntegrityError):
             DepartmentHierarchy.objects.create(department=department)
 
-    # 親部門に自分自身を指定した場合はエラーになることを確認(DB制約。Serviceの事前条件チェックが一次防衛)
+    # 親部門に自分自身を指定した場合はエラーになること(DB制約。Serviceの事前条件チェックが一次防衛)
     def test_parent_cannot_be_self(self):
         company = Company.objects.create(name='サンプル株式会社')
         department = Department.objects.create(company=company, name='営業部')
@@ -46,7 +46,7 @@ class TestDepartmentHierarchyModel:
         with pytest.raises(IntegrityError):
             DepartmentHierarchy.objects.create(department=department, parent_department=department)
 
-    # __str__が「部門 (親: 親部門)」の形式を返すことを確認
+    # __str__が「部門 (親: 親部門)」の形式を返すこと
     def test_str_includes_department_and_parent(self):
         company = Company.objects.create(name='サンプル株式会社')
         parent = Department.objects.create(company=company, name='本社')

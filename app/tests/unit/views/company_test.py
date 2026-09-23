@@ -16,13 +16,13 @@ def _grant_group_admin(admin_user):
 @pytest.mark.django_db
 class TestCompanyIndexView:
 
-    # 未ログインの場合、ログインページにリダイレクトされることを確認
+    # 未ログインの場合、ログインページにリダイレクトされること
     def test_index_requires_login(self, client):
         response = client.get('/companies/')
         assert response.status_code == 302
         assert response.url.startswith('/login/')
 
-    # 会社閲覧の権限が無いユーザーには一覧が0件になることを確認
+    # 会社閲覧の権限が無いユーザーには一覧が0件になること
     def test_index_by_user_without_permission_is_empty(self, auth_client):
         Company.objects.create(name='サンプル株式会社')
 
@@ -30,7 +30,7 @@ class TestCompanyIndexView:
         assert response.status_code == 200
         assert len(response.context['companies']) == 0
 
-    # 会社閲覧を許可する権限セットを持つユーザーには一覧に表示されることを確認
+    # 会社閲覧を許可する権限セットを持つユーザーには一覧に表示されること
     def test_index_by_user_with_view_permission(self, sample_user, auth_client):
         company = Company.objects.create(name='サンプル株式会社')
         _grant(sample_user, COMPANY_SCOPED_DEPARTMENT_MANAGER)
@@ -39,7 +39,7 @@ class TestCompanyIndexView:
         assert response.status_code == 200
         assert company in response.context['companies']
 
-    # 管理者は一覧を取得できることを確認
+    # 管理者は一覧を取得できること
     def test_index_by_admin_succeeds(self, admin_client):
         Company.objects.create(name='サンプル株式会社')
 
@@ -51,14 +51,14 @@ class TestCompanyIndexView:
 @pytest.mark.django_db
 class TestCompanyShowView:
 
-    # 会社閲覧の権限が無いユーザーがアクセスすると403が返ることを確認
+    # 会社閲覧の権限が無いユーザーがアクセスすると403が返ること
     def test_show_by_user_without_permission_returns_403(self, auth_client):
         company = Company.objects.create(name='サンプル株式会社')
 
         response = auth_client.get(f'/companies/{company.id}/')
         assert response.status_code == 403
 
-    # 会社閲覧を許可する権限セットを持つユーザーは詳細を取得できることを確認
+    # 会社閲覧を許可する権限セットを持つユーザーは詳細を取得できること
     def test_show_by_user_with_view_permission(self, sample_user, auth_client):
         company = Company.objects.create(name='サンプル株式会社')
         _grant(sample_user, COMPANY_SCOPED_DEPARTMENT_MANAGER)
@@ -67,7 +67,7 @@ class TestCompanyShowView:
         assert response.status_code == 200
         assert response.context['company'] == company
 
-    # 存在しない会社の場合404が返ることを確認
+    # 存在しない会社の場合404が返ること
     def test_show_nonexistent_company_returns_404(self, admin_client):
         response = admin_client.get('/companies/9999/')
         assert response.status_code == 404
@@ -76,20 +76,20 @@ class TestCompanyShowView:
 @pytest.mark.django_db
 class TestCompanyCreateView:
 
-    # 作成権限が無いユーザーがアクセスすると403が返ることを確認(会社閲覧のみの権限セットでは作成不可)
+    # 作成権限が無いユーザーがアクセスすると403が返ること(会社閲覧のみの権限セットでは作成不可)
     def test_new_by_user_without_create_permission_returns_403(self, sample_user, auth_client):
         _grant(sample_user, COMPANY_SCOPED_DEPARTMENT_MANAGER)
 
         response = auth_client.get('/companies/new/')
         assert response.status_code == 403
 
-    # 管理者はGETでフォームを取得できることを確認
+    # 管理者はGETでフォームを取得できること
     def test_get_returns_form(self, admin_client):
         response = admin_client.get('/companies/new/')
         assert response.status_code == 200
         assert 'form' in response.context
 
-    # 管理者が有効なデータでPOSTすると会社が作成され詳細ページにリダイレクトされることを確認
+    # 管理者が有効なデータでPOSTすると会社が作成され詳細ページにリダイレクトされること
     def test_post_valid_data_creates_company_and_redirects(self, admin_client):
         response = admin_client.post('/companies/new/', {'name': 'サンプル株式会社'})
 
@@ -97,14 +97,14 @@ class TestCompanyCreateView:
         assert response.status_code == 302
         assert response.url == f'/companies/{company.id}/'
 
-    # 管理者が無効なデータでPOSTするとフォームが再表示されることを確認
+    # 管理者が無効なデータでPOSTするとフォームが再表示されること
     def test_post_invalid_data_redisplays_form(self, admin_client):
         response = admin_client.post('/companies/new/', {'name': ''})
 
         assert response.status_code == 200
         assert response.context['form'].is_valid() is False
 
-    # 既存の会社と名前が重複する場合、エラー付きでフォームが再表示されることを確認
+    # 既存の会社と名前が重複する場合、エラー付きでフォームが再表示されること
     def test_post_duplicate_name_redisplays_form_with_error(self, admin_client):
         Company.objects.create(name='サンプル株式会社')
 
@@ -118,14 +118,14 @@ class TestCompanyCreateView:
 @pytest.mark.django_db
 class TestCompanyEditView:
 
-    # 編集権限が無いユーザーがアクセスすると403が返ることを確認
+    # 編集権限が無いユーザーがアクセスすると403が返ること
     def test_edit_by_user_without_permission_returns_403(self, auth_client):
         company = Company.objects.create(name='サンプル株式会社')
 
         response = auth_client.get(f'/companies/{company.id}/edit/')
         assert response.status_code == 403
 
-    # 管理者が有効なデータでPOSTすると会社が更新され詳細ページにリダイレクトされることを確認
+    # 管理者が有効なデータでPOSTすると会社が更新され詳細ページにリダイレクトされること
     def test_post_valid_data_updates_company_and_redirects(self, admin_client):
         company = Company.objects.create(name='サンプル株式会社')
 
@@ -135,7 +135,7 @@ class TestCompanyEditView:
         assert response.status_code == 302
         assert company.name == '更新後株式会社'
 
-    # 他の会社と名前が重複する場合、エラー付きでフォームが再表示され更新されないことを確認
+    # 他の会社と名前が重複する場合、エラー付きでフォームが再表示され更新されないこと
     def test_post_duplicate_name_redisplays_form_with_error(self, admin_client):
         Company.objects.create(name='既存株式会社')
         company = Company.objects.create(name='サンプル株式会社')
@@ -147,7 +147,7 @@ class TestCompanyEditView:
         assert 'この会社名は既に使用されています。' in response.context['form'].errors['name']
         assert company.name == 'サンプル株式会社'
 
-    # 名前を変えずに更新した場合、自分自身との重複はエラーにならないことを確認
+    # 名前を変えずに更新した場合、自分自身との重複はエラーにならないこと
     def test_post_same_name_updates_successfully(self, admin_client):
         company = Company.objects.create(name='サンプル株式会社')
 
@@ -157,7 +157,7 @@ class TestCompanyEditView:
         assert response.status_code == 302
         assert company.name == 'サンプル株式会社'
 
-    # 存在しない会社の場合404が返ることを確認
+    # 存在しない会社の場合404が返ること
     def test_edit_nonexistent_company_returns_404(self, admin_client):
         response = admin_client.get('/companies/9999/edit/')
         assert response.status_code == 404
@@ -166,7 +166,7 @@ class TestCompanyEditView:
 @pytest.mark.django_db
 class TestCompanyDeleteView:
 
-    # 削除権限が無いユーザーがアクセスすると403が返ることを確認
+    # 削除権限が無いユーザーがアクセスすると403が返ること
     def test_delete_by_user_without_permission_returns_403(self, auth_client):
         company = Company.objects.create(name='サンプル株式会社')
 
@@ -174,7 +174,7 @@ class TestCompanyDeleteView:
         assert response.status_code == 403
         assert Company.objects.filter(id=company.id).count() == 1
 
-    # 管理者はPOSTで削除でき、一覧ページにリダイレクトされることを確認
+    # 管理者はPOSTで削除でき、一覧ページにリダイレクトされること
     def test_post_deletes_company_and_redirects_to_index(self, admin_client):
         company = Company.objects.create(name='サンプル株式会社')
 
@@ -184,7 +184,7 @@ class TestCompanyDeleteView:
         assert response.url == '/companies/'
         assert Company.objects.filter(id=company.id).count() == 0
 
-    # 存在しない会社の場合404が返ることを確認
+    # 存在しない会社の場合404が返ること
     def test_delete_nonexistent_company_returns_404(self, admin_client):
         response = admin_client.get('/companies/9999/delete/')
         assert response.status_code == 404

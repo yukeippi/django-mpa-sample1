@@ -8,7 +8,7 @@ from app.models import Employee
 @pytest.mark.django_db
 class TestEmployeeModel:
 
-    # Userと社員番号を指定して作成できることを確認
+    # Userと社員番号を指定して作成できること
     def test_create_employee(self):
         user = User.objects.create_user(username='taro', password='pass12345')
         employee = Employee.objects.create(user=user, employee_number='E2001')
@@ -17,7 +17,7 @@ class TestEmployeeModel:
         assert employee.user == user
         assert employee.employee_number == 'E2001'
 
-    # employee_numberが重複する場合はエラーになることを確認
+    # employee_numberが重複する場合はエラーになること
     def test_employee_number_must_be_unique(self):
         user1 = User.objects.create_user(username='taro', password='pass12345')
         user2 = User.objects.create_user(username='jiro', password='pass12345')
@@ -26,7 +26,7 @@ class TestEmployeeModel:
         with pytest.raises(IntegrityError):
             Employee.objects.create(user=user2, employee_number='E3001')
 
-    # __str__がユーザーのフルネームを返すことを確認
+    # __str__がユーザーのフルネームを返すこと
     def test_str_returns_full_name(self):
         user = User.objects.create_user(
             username='taro', password='pass12345', first_name='太郎', last_name='山田'
@@ -35,7 +35,7 @@ class TestEmployeeModel:
 
         assert str(employee) == user.get_full_name()
 
-    # フルネームが未設定の場合はusernameを返すことを確認
+    # フルネームが未設定の場合はusernameを返すこと
     def test_str_falls_back_to_username(self):
         user = User.objects.create_user(username='taro', password='pass12345')
         employee = Employee.objects.create(user=user, employee_number='E5001')
@@ -47,7 +47,7 @@ class TestEmployeeModel:
 @pytest.mark.django_db
 class TestEmployeeQuerySet:
 
-    # with_user()が全件を返すことを確認
+    # with_user()が全件を返すこと
     def test_with_user_returns_all_employees(self):
         user = User.objects.create_user(username='taro', password='pass12345')
         employee = Employee.objects.create(user=user, employee_number='E6001')
@@ -56,7 +56,7 @@ class TestEmployeeQuerySet:
 
         assert result == [employee]
 
-    # with_user()がuserをselect_relatedし、追加クエリが発生しないことを確認
+    # with_user()がuserをselect_relatedし、追加クエリが発生しないこと
     def test_with_user_avoids_extra_query(self, django_assert_num_queries):
         user = User.objects.create_user(username='taro', password='pass12345')
         Employee.objects.create(user=user, employee_number='E7001')
