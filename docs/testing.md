@@ -29,8 +29,8 @@ tests/
 │   ├── permissions/
 │   ├── management/
 │   │   └── commands/
-│   └── lib/
-│       └── validators/
+│   ├── lib/
+│   └── validators_test.py
 └── e2e/                         # E2Eテスト(機能ごとにファイル分割)
     ├── __init__.py
     ├── conftest.py              # E2E専用のフィクスチャ

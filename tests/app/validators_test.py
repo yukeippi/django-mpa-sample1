@@ -1,6 +1,6 @@
 import pytest
 from django.core.exceptions import ValidationError
-from app.lib.validators.task import validate_description_contains_issue_reference
+from app.validators import validate_description_contains_issue_reference
 
 
 class TestValidateDescriptionContainsIssueReference:

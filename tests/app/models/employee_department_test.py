@@ -18,7 +18,7 @@ class TestEmployeeDepartmentModel:
         assert relation.id is not None
         assert relation.is_primary is True
 
-    # 同じ社員・部門の組み合わせが重複する場合はエラーになること(DB制約。Serviceの事前条件チェックが一次防衛)
+    # 同じ社員・部門の組み合わせが重複する場合はエラーになること(DB制約)
     def test_same_employee_department_pair_must_be_unique(self):
         employee = _create_employee('E7002')
         department = _create_department('開発部')

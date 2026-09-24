@@ -28,7 +28,7 @@ class EmployeeDepartment(models.Model):
         verbose_name = '社員所属部門'
         verbose_name_plural = '社員所属部門'
         constraints = [
-            # 同じ社員・部門の組み合わせが重複しないようにする(競合時の最終防衛。Serviceの事前条件チェックが一次防衛)
+            # 同じ社員・部門の組み合わせが重複しないようにする(full_clean()もこれを検証する)
             models.UniqueConstraint(fields=['employee', 'department'], name='unique_employee_department'),
         ]
 

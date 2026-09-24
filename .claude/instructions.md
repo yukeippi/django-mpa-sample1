@@ -20,7 +20,7 @@
 
 ### File Structure Rules
 
-models、forms、views、lib、templatesはディレクトリ化し、機能ごとにファイル分割してください。検証ロジックがForm/Validator/View/DB制約のどこに属するかはValidation Rulesを参照。
+models、forms、views、lib、templatesはディレクトリ化し、機能ごとにファイル分割してください。検証ロジックがモデルフィールド/`Model.clean()`/DB制約/Form/モデルのメソッドのどこに属するかはValidation Rulesを参照。
 
 Djangoが標準で持たないレイヤー(`services/`、`selectors/`のような独自ディレクトリ)は既定では作らない。読み書きの置き場所はDjango本来の位置、すなわちmodel・form・viewに寄せる(View Write Rules/QuerySet Rules参照)。
 
@@ -28,18 +28,18 @@ Djangoが標準で持たないレイヤー(`services/`、`selectors/`のよう�
 - app/models/todo.py
 - app/views/todo.py
 - app/forms/todo.py
-- app/lib/validators/todo.py
+- app/validators.py
 - tests/app/models/todo_test.py
 - tests/app/forms/todo_test.py
 - tests/app/views/todo_test.py
-- tests/app/lib/validators/todo_test.py
+- tests/app/validators_test.py
 - tests/e2e/todo_test.py
 
 各ディレクトリに__init__.pyを配置すること(`tests/`直下にも置く。置かないと`tests/app/`が本物の`app`パッケージと同じ名前で読み込まれて衝突する)。
 
 テストコードはアプリの中(`app/tests/`)ではなく、プロジェクト直下の`tests/`にまとめる。`tests/`の下は、ソース側のトップレベルディレクトリと同じ名前で分ける(`tests/app/`、`config`や`common`にテストが必要になれば`tests/config/`、`tests/common/`)。全テスト共通のフィクスチャは`tests/conftest.py`に置く。
 
-`tests/<アプリ名>/`配下は、ソース側の`models/`, `forms/`, `views/`, `lib/`と対応するレイヤーごとのディレクトリに分割する(Railsの`test/models/`, `test/controllers/`に相当)。E2Eは`tests/e2e/`にあるため、アプリごとのディレクトリの下はユニットテストだけになる。`unit/`のような階層は挟まない。`app/lib/`(`auth.py`/`validators/`等、app内で共有するロジック。詳細はCommon Module Rulesを参照)のテストも同様に`tests/app/lib/`に置き、`app/lib/`内でディレクトリを切っている場合はその構造も反映する(例: `tests/app/lib/auth_test.py`、`tests/app/lib/validators/todo_test.py`)。`app/management/commands/`のようにその他のディレクトリにあるコードも、同じ構造で置く(例: `tests/app/management/commands/notes_test.py`)。
+`tests/<アプリ名>/`配下は、ソース側の`models/`, `forms/`, `views/`, `lib/`と対応するレイヤーごとのディレクトリに分割する(Railsの`test/models/`, `test/controllers/`に相当)。E2Eは`tests/e2e/`にあるため、アプリごとのディレクトリの下はユニットテストだけになる。`unit/`のような階層は挟まない。`app/lib/`(`auth.py`等、app内で共有するロジック。詳細はCommon Module Rulesを参照)のテストも同様に`tests/app/lib/`に置き、`app/lib/`内でディレクトリを切っている場合はその構造も反映する(例: `tests/app/lib/auth_test.py`)。`app/validators.py`のようにアプリ直下にあるファイルのテストは`tests/app/`直下に置く(例: `tests/app/validators_test.py`)。`app/management/commands/`のようにその他のディレクトリにあるコードも、同じ構造で置く(例: `tests/app/management/commands/notes_test.py`)。
 
 `tests/e2e/`はページ単位のテストで、画面は複数のアプリにまたがるため、アプリごとのディレクトリの下ではなく`tests/`直下に置く。このレイヤー分割も行わない。
 
@@ -49,18 +49,19 @@ Djangoが標準で持たないレイヤー(`services/`、`selectors/`のよう�
 
 共有モジュールは、共有する範囲によって置き場所を分ける。Pythonモジュールに限らず、テンプレートも同じ考え方で置き場所を分ける。
 
-`app/lib/`は、`models/`/`views/`/`forms/`のいずれにも属さない補助的なコードの置き場である。業務ロジック(モデルへの書き込みを伴う処理)は`app/lib/`に置かず、その操作を行うviewに置く(View Write Rules参照)。
+`app/lib/`は、`models/`/`views/`/`forms/`のいずれにも属さない補助的なコードの置き場である。業務ロジック(モデルへの書き込みを伴う処理)は`app/lib/`に置かない。1つのモデルの状態を変える操作はそのモデルのメソッドに、複数モデルにまたがる手順はその操作を行うviewに置く(View Write Rules参照)。
 
-- **1つのアプリ内で共有**: `app/lib/` に置く(Railsの`lib/`相当)。`urls.py`/`apps.py`/`admin.py`のような、Djangoの規約でアプリ直下に置くと決まっているファイルはそのままアプリ直下に残し、開発者が追加した「app内で共有するロジック」だけを`app/lib/`にまとめる。役割ごとにファイルを分ける: 認証(ログイン等、誰であるかの検証)は`app/lib/auth.py`、汎用ユーティリティは`app/lib/utils.py`(増えてきたら`app/lib/utils/`ディレクトリ化し、関心事ごとにファイル分割する。例: `utils/date.py`)。ナビゲーションバー・フラッシュメッセージ表示のような特定のモデルに属さないパーシャルテンプレート(`app/templates/common/`)も同じ考え方で、このアプリ専用の置き場に置く。「複数アプリ間で共有」に見えても、実際に共有先の別アプリが存在しない限りは、このアプリ内に留める。検証ロジック(Pure Function)も例外ではなく`app/lib/validators/`に置く(Validator Rules参照)。`app/permissions/`のようにトップレベルへ出ているものは、人の判断で移した結果であり、最初からそこに作るという意味ではない。
+- **1つのアプリ内で共有**: `app/lib/` に置く(Railsの`lib/`相当)。`urls.py`/`apps.py`/`admin.py`のような、Djangoの規約でアプリ直下に置くと決まっているファイルはそのままアプリ直下に残し、開発者が追加した「app内で共有するロジック」だけを`app/lib/`にまとめる。役割ごとにファイルを分ける: 認証(ログイン等、誰であるかの検証)は`app/lib/auth.py`、汎用ユーティリティは`app/lib/utils.py`(増えてきたら`app/lib/utils/`ディレクトリ化し、関心事ごとにファイル分割する。例: `utils/date.py`)。ナビゲーションバー・フラッシュメッセージ表示のような特定のモデルに属さないパーシャルテンプレート(`app/templates/common/`)も同じ考え方で、このアプリ専用の置き場に置く。「複数アプリ間で共有」に見えても、実際に共有先の別アプリが存在しない限りは、このアプリ内に留める。ただし、validatorはDjangoの慣習に合わせて`app/lib/`ではなくアプリ直下の`app/validators.py`に置く(Validator Rules参照)。`app/permissions/`のようにトップレベルへ出ているものは、人の判断で移した結果であり、最初からそこに作るという意味ではない。
   - 例外: `app/management/commands/`(Djangoがこの場所を前提にコマンドを自動検出する)と`app/seeds/`(Seed Data Rules参照、モデルごとのデータ生成スクリプト群という別カテゴリ)は`app/lib/`に含めない。
-  - **規模が大きくなっても、まず`app/lib/`の下に置く**: 関心事が大きくなったら、`app/lib/`の下でディレクトリを切って分ける(例: `app/lib/validators/`と同じように`app/lib/reports/`を作る)。`models/`/`views/`/`forms/`等と同列のトップレベルディレクトリへ移すかどうかは、AIの判断では行わず人が決める。アプリ直下には、できるだけDjango標準でないディレクトリを置かないため。移した後は他のトップレベルディレクトリと同じ構成規則(ディレクトリ化・`__init__.py`配置・テストディレクトリの対応)に従う。
+  - **規模が大きくなっても、まず`app/lib/`の下に置く**: 関心事が大きくなったら、`app/lib/`の下でディレクトリを切って分ける(例: `app/lib/reports/`を作る)。`models/`/`views/`/`forms/`等と同列のトップレベルディレクトリへ移すかどうかは、AIの判断では行わず人が決める。アプリ直下には、できるだけDjango標準でないディレクトリを置かないため。移した後は他のトップレベルディレクトリと同じ構成規則(ディレクトリ化・`__init__.py`配置・テストディレクトリの対応)に従う。
 - **複数アプリ間で共有**: `app/` と同列に共有専用アプリ `common/` を作り、`INSTALLED_APPS` に登録して置く。これは実際に2つ以上のアプリから使われるようになった時点で行う。
 
 ##### 判断に迷った場合
 
 `app/lib/` に置くべきか view に置くべきか迷ったら、次で判断する。
 
-- モデルへの書き込みを行う、またはトランザクションを必要とする → その操作を行うview(View Write Rules参照)
+- 1つのモデルの状態を変える(可否の確認を含む) → そのモデルのメソッド(Validation Rules参照)
+- 複数モデルにまたがって書き込む、またはトランザクションを必要とする → その操作を行うview(View Write Rules参照)
 - 値の計算・変換・判定のみで、DBを変更しない → `app/lib/`
 
 ```
@@ -69,13 +70,13 @@ app/
 ├── urls.py                  # Djangoの規約でアプリ直下に置くファイル(そのまま)
 ├── apps.py
 ├── admin.py
-├── models/                  # 永続化・状態判定
-├── views/                   # HTTPの入出力・モデルへの書き込み(View Write Rules参照)
-├── forms/                   # 入力検証(画面単位。Validation Rules参照)
+├── validators.py            # モデルフィールドに渡すvalidator(Validator Rules参照)
+├── models/                  # 永続化・業務ルールの検証・状態を変える操作(Validation Rules参照)
+├── views/                   # HTTPの入出力・トランザクションの境界(View Write Rules参照)
+├── forms/                   # 画面の入力項目と画面固有の検証(Form Rules参照)
 ├── lib/                     # 上記のどれにも属さない、app内で共有するコード
 │   ├── __init__.py
 │   ├── auth.py              # 認証ロジック(ログイン等、誰であるかの検証)
-│   ├── validators/          # Pure Functionの検証ロジック(Validator Rules参照)
 │   └── utils.py             # 汎用ユーティリティ
 └── templates/
     └── common/              # appアプリ内で共有するパーシャルテンプレート
@@ -214,76 +215,66 @@ class Command(BaseCommand):
 
 ### Validation Rules
 
-検証は1箇所に集約せず、判断できるタイミングごとに3段階へ分ける。同じチェックをどの段階にも重複して書かない。
+検証はDjango標準の仕組みに沿って置く。**業務ルールはモデルに置き、ModelFormはそれを`full_clean()`経由で画面のエラーに変換する。** どの画面・どの入口(admin、管理コマンド等)から保存しても同じルールが守られるようにするため。同じチェックを複数の場所に重複して書かない。
 
-1. **Form(画面単位)**: 画面から入力される値に関する検証はここに集約する。ModelFormを使うため、`max_length`・`unique=True`・`Meta.constraints`の`UniqueConstraint`といったモデル由来の検証は`full_clean()`経由で自動的にこの段階に含まれる。**書く必要があるのは、自動で導出されないものだけ**。すなわち、単一フィールドの形式チェック(`clean_<field>()`)と、複数フィールドが揃って初めて判断できる業務ルール(`clean()`)である。再利用したい判定は`app/lib/validators/`のPure Functionを呼ぶ(Form Rules/Validator Rules参照)
-2. **ユースケース検証(View)**: **フォームを伴わない操作**の事前条件。「完了にする」「承認する」のように、画面からの入力ではなく対象の現在状態によって可否が決まるもの。viewの書き込みヘルパーが`django.core.exceptions.ValidationError`を`code`付きで送出し、呼び出し側が受けて`messages.error()`に渡す(View Write Rules参照)
-3. **DB制約(最終防衛)**: `unique=True`/`Meta.constraints`(`UniqueConstraint`/`CheckConstraint`)など、DB自身が保証できる不変条件だけを書く。Modelに独自の`clean()`は実装しない(禁止。下記「Model(第3段階): 禁止事項」参照)
+1. **フィールド単位(モデルフィールド)**: `max_length`・`choices`・`unique=True`・`validators=[...]`など、1つの値だけで判断できる検証。モデルフィールドに宣言する。自作の検証関数は`app/validators.py`に置く(Validator Rules参照)
+2. **モデル単位の業務ルール(`Model.clean()`)**: 複数フィールドが揃って初めて判断できるもの、関連モデルとの整合性(例: 親部門と部門が同じ会社に属すること、権限セット番号がPythonのレジストリに実在すること)。DBを参照してよい
+3. **DB制約(`Meta.constraints`)**: `UniqueConstraint`/`CheckConstraint`など、DBが機械的に保証できる不変条件。`full_clean()`が保存前に検証するため、同じ検証を`clean()`やフォームに書き足さない
+4. **画面固有の検証(Form)**: モデルの業務ルールではなく、その画面にしか無い検証だけを書く(例: パスワードの確認入力、画面にだけある同意チェック)。フィールド単位は`clean_<field>()`、複数フィールドは`clean()`に書く
+5. **状態を変える操作の可否(モデルのメソッド)**: 「完了にする」「承認する」のように、画面からの入力ではなく対象の現在の状態で可否が決まるもの。操作そのものをモデルのメソッド(`task.complete()`)にし、その中で可否を確認して、できなければ`django.core.exceptions.ValidationError`を`code`付きで送出する(View Write Rules参照)
 
-「画面の入力に関する判断か(1)」「フォームを介さない操作の可否か(2)」「DBが機械的に保証できる制約か(3)」で置き場所を切り分ける。
+FormとModelのどちらに置くか迷ったら、「その画面を通らない保存(adminなど)でも守るべきルールか」で判断する。守るべきならモデルに置く。
 
-**1と3は重複して書かない。** モデルに制約を書けば、ModelFormがそれを画面のエラーに変換する。重複チェックをフォームやviewに手で書き足す必要はない。逆に、DB制約で表現できない業務ルール(例: 権限セット番号がPythonのレジストリに実在すること、親部門と部門が同じ会社に属すること)は1の`clean()`が唯一の砦になる。実装漏れがないことはレビューで担保する。
+#### full_clean()が呼ばれるタイミング
 
-**エラーの表示位置**: モデル由来の検証はそのフィールドのエラーになり、`clean()`で送出したものはフォーム全体のエラー(non_field_errors)になる。テンプレートは両方を描画できるようにしておく。
+- ModelFormの`is_valid()`は内部で`full_clean()`を呼ぶ(フィールドの検証→`clean()`→制約の検証の順)。フォーム経由の保存では何も書き足さなくてよい
+- **`save()`は`full_clean()`を呼ばない。** これはDjangoの設計であり、`save()`をオーバーライドして`full_clean()`を呼ぶことはしない。フォームを通らずに作成・更新する場合(seed、管理コマンド、テストのデータ作成など)で検証が必要なら、保存の前に`full_clean()`を明示的に呼ぶ
+- `QuerySet.update()`/`bulk_create()`はモデルの検証も`save()`も通らない。業務ルールを通す必要がある更新には使わない
 
-#### Model(第3段階): 禁止事項
+#### Model.clean()の書き方
 
-- **`clean()`の独自実装を禁止する**: Modelはフィールド定義・DB制約・自身のインスタンス値だけで完結するpureなメソッド(状態判定など)だけを持つ。DBを参照する検証やモデル間の整合性チェックはModelに書かない。なお`full_clean()`はModelFormが内部で呼ぶ(Form Rules参照)。これはDjangoの標準動作であり、禁止の対象は独自の`clean()`実装である
-- **`save()`/`delete()`のオーバーライドを禁止する**: 書き込みの起点はviewが明示的に持つ(View Write Rules参照)。Modelの`save()`にフックを増やさない
-- **Modelのメソッド内でORMクエリを呼ばない**: `self.related_set.filter(...)`のような関連経由の暗黙アクセスも含め、Model メソッドは自分自身の属性値だけで判定する。DBを参照する判定はQuerySet(読み取り)かviewの書き込みヘルパー(書き込み前提条件)に置く
-- **重複チェック等、DBで機械的に保証できる制約は`Meta.constraints`に書く**: `models.UniqueConstraint(fields=[...])`のようにDB自身が守れる形に落とし込めるなら、ここに書く。ModelFormがこれを画面のエラーに変換するため、同じ検証をフォームやviewに書き足す必要はない。DB制約で表現できない業務ルールのみ、フォームの`clean()`に書く
+- 特定のフィールドのエラーにしたい場合は`ValidationError({'field': ValidationError('文言', code='...')})`のように辞書で送出する。キーにするフィールドは、そのモデルを扱うModelFormの`fields`に含まれている必要がある(含まれていないとModelFormが`ValueError`を送出する)。含まれることが確実でなければ、フィールドを指定せずに送出してフォーム全体のエラーにする
+- 関連フィールドは未設定の場合があるため、`self.department`ではなく`self.department_id`で有無を確認してから辿る(未設定のまま辿ると`RelatedObjectDoesNotExist`になる)
+- `code`を必ず付ける(Validator Rules参照)
+
+**エラーの表示位置**: フィールドの検証と、辞書で送出したものはそのフィールドのエラーになる。フィールドを指定しない`clean()`のエラーと`Meta.constraints`の違反はフォーム全体のエラー(non_field_errors)になる。テンプレートは両方を描画できるようにしておく。
 
 #### Example
 
 ```python
+# app/models/department.py
 from django.db import models
 
 
-class DepartmentQuerySet(models.QuerySet):
-
-    # 同じ会社・同じ名前の部門に絞り込む(自分自身は除く)。viewの事前条件チェックから呼ぶ(QuerySet Rules参照)
-    def duplicate_of(self, *, company, name, exclude_pk=None):
-        queryset = self.filter(company=company, name=name)
-        if exclude_pk is not None:
-            queryset = queryset.exclude(pk=exclude_pk)
-        return queryset
-
-
 class Department(models.Model):
-    objects = DepartmentQuerySet.as_manager()
     company = models.ForeignKey(Company, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
 
     class Meta:
-        # DB自身が保証できる制約(競合時の最終防衛)
+        # 同じ会社内で部門名が重複しないようにする。ModelFormがfull_clean()経由でこれを画面のエラーに変換する
         constraints = [
             models.UniqueConstraint(fields=['company', 'name'], name='unique_department_name_per_company'),
         ]
 ```
 
 ```python
+# app/models/department_hierarchy.py
+from django.core.exceptions import ValidationError
+from django.db import models
+
+
 class DepartmentHierarchy(models.Model):
     department = models.OneToOneField(Department, on_delete=models.CASCADE)
     parent_department = models.ForeignKey(Department, null=True, blank=True, on_delete=models.CASCADE)
-    # 「parent_departmentはdepartmentと同じ会社に属する」はモデルを跨ぐ整合性でありDB制約で表現できないため、
-    # viewの事前条件チェック(下記_set_parent_department())が唯一の検証になる
-```
 
-```python
-# app/views/department.py
-from django.core.exceptions import ValidationError
-
-
-# 親部門を設定する(複数モデルを跨ぐ整合性はDB制約で表現できないため、ここが唯一の検証になる)
-def _set_parent_department(*, hierarchy: DepartmentHierarchy, parent_department: Department) -> DepartmentHierarchy:
-    if parent_department.company_id != hierarchy.department.company_id:
-        raise ValidationError(
-            '親部門は同じ会社に属している必要があります。', code='parent_department_company_mismatch'
-        )
-
-    hierarchy.parent_department = parent_department
-    hierarchy.save(update_fields=['parent_department'])
-    return hierarchy
+    # 親部門は同じ会社に属していなければならない(モデルを跨ぐ整合性はDB制約で表現できないため、clean()で検証する)
+    def clean(self):
+        if self.department_id is None or self.parent_department_id is None:
+            return
+        if self.parent_department.company_id != self.department.company_id:
+            raise ValidationError(
+                '親部門は同じ会社に属している必要があります。', code='parent_department_company_mismatch'
+            )
 ```
 
 ### Form Rules
@@ -291,8 +282,9 @@ def _set_parent_department(*, hierarchy: DepartmentHierarchy, parent_department:
 フォームは`forms.ModelForm`を継承し、`Meta`で対象モデルと画面に出すフィールドを宣言する。
 
 - **フィールドはMetaで明示する**: `fields = '__all__'`や`exclude`は使わない。モデルにフィールドを足したときに、画面の入力項目が黙って増えることを防ぐ。画面に出す項目を`fields`に列挙し、その並びが画面の入力契約になる
-- **モデル由来の検証はModelFormに任せる**: `max_length`、`unique=True`、`Meta.constraints`の`UniqueConstraint`などは、ModelFormが`full_clean()`を通じて自動で検証する。同じ検証をフォームに重ねて書かない(Validation Rules参照)
-- **モデルに無い制約はフォームで明示宣言する**: モデル側がDB制約(`CheckConstraint`)しか持たない範囲指定などは、ModelFormでは導出されない。画面での一次防衛が必要なら、そのフィールドをフォームで明示的に宣言して`min_value`等を与える
+- **モデル由来の検証はModelFormに任せる**: `max_length`、`validators`、`unique=True`、`Model.clean()`、`Meta.constraints`は、ModelFormが`full_clean()`を通じて自動で検証する。同じ検証をフォームに重ねて書かない(Validation Rules参照)
+- **範囲などの制約はモデルフィールドの`validators`に書く**: `CheckConstraint`だけだと、違反はフォーム全体のエラーになる。フィールドのエラーとして出したい場合は、モデルフィールドに`validators=[MinValueValidator(1), MaxValueValidator(5)]`のように付ける(DBでの保証が必要なら`CheckConstraint`と併用する)。フォーム側でフィールドを宣言し直して`min_value`等を与えることはしない
+- **フォームに書く検証は画面固有のものだけ**: パスワードの確認入力のような、モデルに無い項目や、その画面でだけ必要なルールに限る(Validation Rules参照)
 - **編集画面の初期値**: `Form(instance=obj)`を使う。initial dictを組み立てるヘルパーは作らない
 - **保存**: `form.save()`を使う。モデルのフィールド以外を設定する必要がある場合(作成者の記録など)は`form.save(commit=False)`で受け取り、設定してから`save()`する
 - **更新時は必ず`instance=`を渡す**: `Form(request.POST, instance=obj)`とする。渡し忘れると更新ではなく新規作成になり、一意制約のエラーとしてしか気づけない
@@ -300,8 +292,8 @@ def _set_parent_department(*, hierarchy: DepartmentHierarchy, parent_department:
 
 #### エラー文言
 
-- **モデル由来の検証**: `Meta.error_messages`で上書きする。複合一意制約(`unique_together`相当)は`NON_FIELD_ERRORS`キーを使う
-- **複数フィールドにまたがる業務ルール**: `clean()`に書き、`forms.ValidationError`に文言を直接渡す。文言を一元管理したいという理由だけで例外クラスを定義し、`XxxError().message`のように生成して文字列を取り出さない。送出されない例外クラスは実体としては文字列定数であり、型が用途を偽ることになる
+- **モデル由来の検証**: フィールド・一意制約の文言はフォームの`Meta.error_messages`で上書きする。複合一意制約(`unique_together`相当)は`NON_FIELD_ERRORS`キーを使う
+- **`clean()`やvalidatorで送出する文言**: `ValidationError`に文言を直接渡す。文言を一元管理したいという理由だけで例外クラスを定義し、`XxxError().message`のように生成して文字列を取り出さない。送出されない例外クラスは実体としては文字列定数であり、型が用途を偽ることになる
 
 #### Example
 
@@ -328,22 +320,31 @@ class DepartmentForm(forms.ModelForm):
 ```
 
 ```python
+# app/models/task.py
+from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
+
+
+class Task(models.Model):
+    ...
+    # 範囲の検証はフィールドのvalidatorsに書く(ModelFormがこのフィールドのエラーとして表示する)
+    priority = models.IntegerField('優先度', default=3, validators=[MinValueValidator(1), MaxValueValidator(5)])
+
+    # 複数フィールドが揃って初めて判断できる業務ルールはclean()に書く
+    def clean(self):
+        if self.status == Task.Status.COMPLETED and not self.description:
+            raise ValidationError('完了にする場合は説明の入力が必要です。', code='task_completed_without_description')
+```
+
+```python
 # app/forms/task.py
 
+# priorityの範囲とclean()の業務ルールはモデル側にあり、ModelFormがfull_clean()経由で検証する
 class TaskForm(forms.ModelForm):
-    # モデル側の範囲指定はDB制約(CheckConstraint)のみのため、画面での一次防衛としてここで宣言する
-    priority = forms.IntegerField(label='優先度', min_value=1, max_value=5)
 
     class Meta:
         model = Task
         fields = ['title', 'description', 'status', 'priority']
-
-    # 複数フィールドが揃って初めて判断できる業務ルールはclean()に書く
-    def clean(self):
-        cleaned_data = super().clean()
-        if cleaned_data.get('status') == Task.Status.COMPLETED and not cleaned_data.get('description'):
-            raise forms.ValidationError('完了にする場合は説明の入力が必要です。')
-        return cleaned_data
 ```
 
 ```python
@@ -363,56 +364,35 @@ def _create_task(request):
 
 ### Validator Rules
 
-複数のFormフィールド・複数モデルで使い回したい検証ロジックは、Formやモデルファイルに直接書かず`app/lib/validators/`に置く。ValidatorはPure Functionとする。
+1つの値だけで判断できる検証は、validator(値を受け取り、失敗時に`ValidationError`を送出する関数)にしてモデルフィールドの`validators=[...]`に渡す。Djangoの`django.core.validators`と同じ形である。
 
-- **配置**: 関心事ごとに`app/lib/validators/<concern>.py`(複数モデルで共有する形式チェック等)、または単一モデルに強く紐づく場合は`app/lib/validators/<model>.py`に置く
-- **Pure Functionの契約**: ORM/DBを呼ばない。viewを呼ばない。`request`/`Form`インスタンスに依存しない。値を1つ受け取り、問題がなければ何も返さず、失敗時に`django.core.exceptions.ValidationError`を送出する(Djangoのvalidatorの標準的な形)
+- **既存のvalidatorを先に使う**: `RegexValidator`・`MinValueValidator`・`MaxValueValidator`・`EmailValidator`など、Djangoにあるもので書けるものは自作しない。文言と`code`は引数で指定する
+- **配置**: 自作・設定済みのvalidatorは`app/validators.py`に置く。数が増えたら`app/validators/`パッケージにして関心事ごとにファイルを分ける(`utils.py`と同じ扱い。Common Module Rules参照)。1つのモデルでしか使わなくても、ここに置く
+- **形**: 値を1つ受け取り、問題がなければ何も返さず、失敗時に`django.core.exceptions.ValidationError`を送出する。DBを参照しない。`request`/`Form`インスタンスに依存しない。DBを参照する検証は`Model.clean()`か`Meta.constraints`に書く(Validation Rules参照)
 - **`code`を必ず付ける**: `ValidationError('文言', code='...')`のように、文言と併せて識別子を渡す。どのルールで落ちたかをテストや構造化ログから判別できるようにするため
-- **DB状態が必要な検証は対象外**: 重複チェックのようにDBを読む必要がある検証はPure Validatorではない。モデルの制約として宣言し、ModelFormに検証させる(Validation Rules参照)
-- **呼び出し元**: Formの`clean_<field>()`から呼ぶ。`ValidationError`はDjangoがそのフィールドのエラーとして自動で割り当てるため、捕まえて詰め替える必要はない。モデルのフィールドの`validators=[...]`に渡して、そのモデルを扱う全てのフォームに適用することもできる
+- **使う場所**: モデルフィールドの`validators=[...]`に渡す。ModelFormはモデルのフィールド検証を実行するため、フォームの`clean_<field>()`から呼び直さない。モデルに無い画面固有の項目に使う場合だけ、フォームフィールドの`validators=[...]`に渡す
+- **移動・リネームに注意する**: モデルフィールドの`validators`はマイグレーションにimportパスごと書き出される。validatorを移動・リネームしたら、既存のマイグレーションの参照も直す。引数を持つ自作のvalidatorクラスには`@deconstructible`を付ける(付けないとマイグレーションを生成できない)
 
 #### Example
 
 ```python
-# app/lib/validators/employee.py
-import re
-from django.core.exceptions import ValidationError
+# app/validators.py
+from django.core.validators import RegexValidator
 
-# 社員番号の形式(例: E0001)
-EMPLOYEE_NUMBER_REGEX = r'^E\d{4}$'
-
-
-# 社員番号の形式を検証する
-def validate_employee_number_format(value: str) -> None:
-    if not re.match(EMPLOYEE_NUMBER_REGEX, value):
-        raise ValidationError('社員番号の形式が正しくありません。', code='invalid_employee_number_format')
+# 社員番号の形式(例: E0001)を検証する
+validate_employee_number_format = RegexValidator(
+    r'^E\d{4}$', '社員番号の形式が正しくありません。', code='invalid_employee_number_format'
+)
 ```
 
 ```python
-# app/lib/validators/__init__.py
-from . import employee
-
-__all__ = ['employee']
-```
-
-```python
-# app/forms/employee.py
-from django import forms
-from app.models import Employee
-from app.lib.validators.employee import validate_employee_number_format
+# app/models/employee.py
+from app.validators import validate_employee_number_format
 
 
-class EmployeeForm(forms.ModelForm):
-
-    class Meta:
-        model = Employee
-        fields = ['employee_number']
-
-    # 画面単位の形式チェック(Validation Rulesの第1段階)。ValidationErrorはDjangoがこのフィールドに割り当てる
-    def clean_employee_number(self):
-        value = self.cleaned_data['employee_number']
-        validate_employee_number_format(value)
-        return value
+class Employee(models.Model):
+    # 形式の検証はModelFormがfull_clean()経由で実行する(フォーム側で呼び直さない)
+    employee_number = models.CharField('社員番号', max_length=5, unique=True, validators=[validate_employee_number_format])
 ```
 
 ## ビュー
@@ -507,7 +487,7 @@ def _render_edit_form(request, task, form):
     return render(request, 'app/task/edit.html', {'form': form, 'task': task})
 ```
 
-リクエストを扱うprivateヘルパーは、フォームの束縛・権限判定・messages・リダイレクトを行う。モデルへの書き込みと業務ルールの検証は、同じファイル内の書き込みヘルパーに置く(View Write Rules参照)。
+リクエストを扱うprivateヘルパーは、フォームの束縛・権限判定・messages・リダイレクトを行う。業務ルールの検証とモデル自身の状態の変更はモデルに、複数モデルにまたがる書き込みの手順は同じファイル内の書き込みヘルパーに置く(View Write Rules参照)。
 
 更新系のPOSTは、成功時に必ずリダイレクトする(POST-Redirect-GET)。ブラウザの再送信を防ぎ、「GETは表示・POSTは更新」の境界を保つため。
 
@@ -518,7 +498,7 @@ def _render_edit_form(request, task, form):
 - **単一取得**: viewで`get_object_or_404(Model, pk=pk)`を直接呼ぶ。`Http404`はHTTPの関心事であり、modelには置かない
 - **一覧取得**: `Model.objects.all()`、または繰り返し使う絞り込み・関連の先読みがある場合はカスタムQuerySetのメソッドを呼ぶ(QuerySet Rules参照)。ページネーション等の都合があるため、viewは評価前の`QuerySet`を受け取る
 - **権限スコープによる絞り込み**: QuerySetのカスタムメソッド(`owned_by`等)に寄せ、viewは`get_object_or_404(Task.objects.owned_by(request.user), pk=pk)`のように渡すだけにする
-- **404にするのは「存在しない/権限のスコープ外」だけ**: 「存在はするが今は編集できない」のような業務ルールによる操作不可は404にせず、書き込みヘルパーが`ValidationError`を送出する(View Write Rules参照)。混同するとURLを直接叩いた場合の挙動(404かエラーメッセージか)が食い違う
+- **404にするのは「存在しない/権限のスコープ外」だけ**: 「存在はするが今は編集できない」のような業務ルールによる操作不可は404にせず、モデルのメソッドが`ValidationError`を送出する(View Write Rules参照)。混同するとURLを直接叩いた場合の挙動(404かエラーメッセージか)が食い違う
 
 #### Example
 
@@ -544,64 +524,74 @@ def edit(request: HttpRequest, pk: int) -> HttpResponse:
 
 ### View Write Rules
 
-モデルへの書き込みと、それに伴う業務ルールの検証は、その操作を行うviewに置く。`app/services/`のようなDjangoが標準で持たない層を既定では作らない。
+業務ルールの検証と、1つのモデルの状態を変える操作は、モデルに置く(Validation Rules参照)。viewが持つのは、フォームの束縛・モデルのメソッドの呼び出し・トランザクションの境界・複数モデルにまたがる手順・通知である。`app/services/`のようなDjangoが標準で持たない層を既定では作らない。
 
-そのviewからしか使われない処理を別ディレクトリに置くと、読むときの追跡が増えるだけで、得られるものが無いため。1つのviewと運命を共にする処理は、そのviewと同じファイルにあるのが最も追いやすい。層を跨いで共有したくなった場合の扱いはService Rulesを参照。
+そのviewからしか使われない手順を別ディレクトリに置くと、読むときの追跡が増えるだけで、得られるものが無いため。1つのviewと運命を共にする処理は、そのviewと同じファイルにあるのが最も追いやすい。層を跨いで共有したくなった場合の扱いはService Rulesを参照。
 
 #### 配置
 
 - 公開アクション(`index`/`show`/`new`/`edit`/`delete`)の下、区切りコメント以降のprivateヘルパー領域に置く(View Method-Branch Rules参照)
-- リクエストを扱うヘルパー(`_create_task`等)と、書き込みを行うヘルパーを分ける。前者はフォームの束縛・権限判定・メッセージ・リダイレクトを担当し、後者はDBへの書き込みだけを担当する
-- 単一モデルへの単純な作成・更新は、リクエストを扱うヘルパーに直接書いてよい。書き込みヘルパーへの切り出しは、トランザクションが必要なとき(複数モデル・複数レコードにまたがる書き込み)に行う
+- リクエストを扱うヘルパー(`_create_task`等)と、書き込みを行うヘルパーを分ける。前者はフォームの束縛・権限判定・メッセージ・リダイレクトを担当し、後者はDBへの書き込みの手順だけを担当する
+- `form.save()`やモデルのメソッド1回で済む作成・更新は、リクエストを扱うヘルパーに直接書いてよい。書き込みヘルパーへの切り出しは、トランザクションが必要なとき(複数モデル・複数レコードにまたがる書き込み)に行う
 
 #### 書き込みヘルパーの書き方
 
 - 引数はキーワード専用(`*`以降)にする
 - **`HttpRequest`を受け取らない。** 必要な値は呼び出し側が取り出して渡す。将来この処理を管理コマンドやバッチから呼びたくなったとき、HTTPに縛られていない状態を保つため
 - 引数・戻り値の型注釈、使わない引数を持たないことについてはFunction Signature Rulesに従う
-- `@transaction.atomic`は書き込みヘルパーに付ける。modelには書かない。1つの業務操作 = 1つのトランザクションとする
+- `@transaction.atomic`は書き込みヘルパーに付ける。モデルのメソッドはトランザクションを開かず、境界は呼び出し側(view・管理コマンド)が持つ。1つの業務操作 = 1つのトランザクションとする
 - **同じファイルに別の意味の同名が同居しないか確認する。** viewは権限判定などを他モジュールからimportしているため、移してきた処理の変数名と衝突することがある(例: ログインユーザー向けの`is_admin()`と、グループの全社管理者フラグ`is_admin`)。衝突する場合は移した側の名前を変え、理由をコメントに残す
 
 #### 関数内部の並び順
 
-書き込みヘルパーの処理は以下の順に書く。この順序により、ガード節が先頭に集まり、外部への通知がDB変更の確定後になる。該当しない段階は省略してよい。
+書き込みヘルパーの処理は以下の順に書く。この順序により、外部への通知がDB変更の確定後になる。該当しない段階は省略してよい。
 
-1. **検証** — 業務条件を満たさなければ`django.core.exceptions.ValidationError`を`code`付きで送出して終了
-2. **変更** — モデルの更新・関連レコードの作成
-3. **記録** — 履歴・監査ログ
-4. **通知** — メール送信・外部システム連携
+1. **変更** — モデルのメソッドを呼ぶ(可否の確認はメソッドの中で行われ、できなければ`ValidationError`が送出される)・関連レコードの作成
+2. **記録** — 履歴・監査ログ
+3. **通知** — メール送信・外部システム連携
 
 通知は`transaction.on_commit()`に包む。トランザクション内で直接実行すると、後続処理がロールバックしても通知だけが送信される。
 
 #### 検証の書き方
 
-**画面から入力された値に関する検証はviewに書かない。** ModelFormが担当する(Form Rules/Validation Rules参照)。重複チェックはモデルの制約から自動的に導かれるため、viewに`_validate_*`のようなヘルパーを作る必要はない。
+**viewに検証を書かない。** 画面から入力された値はModelForm(とその先のモデル)が、フォームを伴わない操作の可否はモデルのメソッドが検証する(Validation Rules参照)。viewに`_validate_*`のようなヘルパーを作る必要はない。
 
-viewに残る検証は、フォームを伴わない操作の事前条件だけである(「完了にする」「承認する」など)。その場合は書き込みヘルパーが`django.core.exceptions.ValidationError`を`code`付きで送出し、呼び出し側が受けて`messages.error()`に渡す。
+フォームを伴わない操作では、モデルのメソッドが送出した`django.core.exceptions.ValidationError`を、リクエストを扱うヘルパーが受けて`messages.error()`に渡す。
 
 `ValidationError`はフォーム専用ではなくDjango全体の検証例外であり、独自の例外階層を作る理由がないためこれを使う。文言は`error.messages[0]`で取り出す(`ValidationError`は複数の文言を保持できるため、属性は`message`ではなく`messages`になる)。
 
 #### modelとの役割分担
 
-viewが持つのは操作の手順であり、状態の意味ではない。
-
 - 「このオブジェクトが今どういう状態か」の判定はmodelに置く(`task.can_complete()`)。テンプレートから`{% if task.can_complete %}`と呼べるのもmodel側にある場合のみ
-- 「その状態でこの操作をしてよいか」の判断と、実際の手順はviewに置く
-
-判定ロジックをviewに書くとviewだけが太り、modelが空になる。判定はmodelへ、手順はviewへ寄せる。
+- 「その状態でこの操作をしてよいか」の確認と、そのモデル自身の状態の変更もmodelに置く(`task.complete()`)。管理コマンドなどview以外から操作しても、同じ確認を通るようにするため
+- 複数モデルにまたがる手順(履歴の作成、関連レコードの更新)とトランザクションの境界、通知はviewに置く
+- 保存のたびに必要な処理(派生値の設定など)は、Djangoの標準どおり`save()`をオーバーライドして書いてよい(`super().save(*args, **kwargs)`を必ず呼ぶ)。ただし`QuerySet.update()`/`bulk_create()`/`QuerySet.delete()`では`save()`/`delete()`は呼ばれない
 
 #### Example
 
 ```python
 # app/models/task.py
+from django.core.exceptions import ValidationError
+from django.utils import timezone
+
 
 # タスク管理のためのモデル
 class Task(models.Model):
     ...
 
-    # 完了可能な状態かどうか(自身のstatusのみで判定するpureなメソッド)
+    # 完了可能な状態かどうか(テンプレートからも呼ぶ)
     def can_complete(self):
         return self.status != Task.Status.COMPLETED
+
+    # タスクを完了にする(完了にできない場合はValidationErrorを送出する)
+    def complete(self):
+        if not self.can_complete():
+            raise ValidationError('このタスクは完了にできません。', code='task_not_completable')
+        if self.children.exclude(status=Task.Status.COMPLETED).exists():
+            raise ValidationError('未完了の子タスクが残っています。', code='task_has_incomplete_children')
+        self.status = Task.Status.COMPLETED
+        self.completed_at = timezone.now()
+        self.save(update_fields=['status', 'completed_at'])
 ```
 
 ```python
@@ -640,28 +630,20 @@ def _complete_task(request, task):
 # タスクを完了にする(履歴の作成を伴うためトランザクションにまとめる)
 @transaction.atomic
 def _apply_completion(*, task: Task, operator: User) -> Task:
-    # 1. 検証(自身のstatusはModelのpureなメソッドで判定し、DBを参照する子タスクの状態はここで直接読む)
-    if not task.can_complete():
-        raise ValidationError('このタスクは完了にできません。', code='task_not_completable')
-    if task.children.exclude(status=Task.Status.COMPLETED).exists():
-        raise ValidationError('未完了の子タスクが残っています。', code='task_has_incomplete_children')
+    # 1. 変更(可否の確認はTask.complete()の中で行う)
+    task.complete()
 
-    # 2. 変更
-    task.status = Task.Status.COMPLETED
-    task.completed_at = timezone.now()
-    task.save(update_fields=['status', 'completed_at'])
-
-    # 3. 記録
+    # 2. 記録
     TaskHistory.objects.create(task=task, action='completed', operator=operator)
 
-    # 4. 通知
+    # 3. 通知
     transaction.on_commit(lambda: send_completion_notice(task))
     return task
 ```
 
 ### Service Rules
 
-`app/services/`は既定では作らない。書き込みはView Write Rulesに従いviewに置く。
+`app/services/`は既定では作らない。書き込みの手順はView Write Rulesに従いviewに置く。
 
 次のいずれかに当てはまった時点で、はじめて`app/services/<model>.py`へ切り出す。
 
@@ -669,7 +651,7 @@ def _apply_completion(*, task: Task, operator: User) -> Task:
 - **view以外の入口からも呼ぶ場合** — 管理コマンド、バッチ、外部API連携など。viewに置いた処理はHTTP経由でしか呼べない
 - **複数モデルにまたがる大きなユースケース** — 1つのviewのprivateヘルパー群に収まらず、手順そのものに名前を付けたい規模になった場合
 
-切り出す場合の書き方はView Write Rulesの書き込みヘルパーと同じ(キーワード専用引数、`HttpRequest`を受け取らない、`@transaction.atomic`、検証→変更→記録→通知の順、`ValidationError`の送出)。`app/services/<model>.py`に関数として定義し、`__init__.py`では`views/`と同様にモジュール単位でインポートして`services.<model>.<関数名>`の形で参照する。
+切り出す場合の書き方はView Write Rulesの書き込みヘルパーと同じ(キーワード専用引数、`HttpRequest`を受け取らない、`@transaction.atomic`、変更→記録→通知の順、可否の確認はモデルのメソッドに任せる)。`app/services/<model>.py`に関数として定義し、`__init__.py`では`views/`と同様にモジュール単位でインポートして`services.<model>.<関数名>`の形で参照する。
 
 **逆に、1つのviewからしか呼ばれない状態が続くserviceはviewへ戻す。** 呼び出し元が1箇所しかない層は、追跡の手間を増やすだけで何も守っていない。
 
@@ -974,7 +956,7 @@ class Task(PublishableBase):
 ```
 
 ```python
-# OK: 宣言だけを抽象モデルに置き、振る舞いはviewの書き込みヘルパーに置く
+# OK: 宣言だけを抽象モデルに置き、振る舞いは具象モデル自身のメソッドに置く
 class PublishableMixin(models.Model):
     class Meta:
         abstract = True
@@ -983,16 +965,13 @@ class PublishableMixin(models.Model):
 
 
 class Task(PublishableMixin):
-    ...
 
-
-# app/views/task.py
-@transaction.atomic
-def _publish_task(*, task: Task, published_at: datetime) -> Task:
-    _validate_publishable(task=task)
-    task.published_at = published_at
-    task.save(update_fields=['published_at'])
-    return task
+    # タスクを公開する(公開できない場合はValidationErrorを送出する)
+    def publish(self, *, published_at: datetime) -> None:
+        if self.status != Task.Status.COMPLETED:
+            raise ValidationError('完了していないタスクは公開できません。', code='task_not_publishable')
+        self.published_at = published_at
+        self.save(update_fields=['published_at'])
 ```
 
 ### Comment Rules
@@ -1175,11 +1154,11 @@ class TestTaskComplete:
 
 テストの置き場所はFile Structure Rulesに従う。**何をどの層で検証するかは、その仕様を決めている層に合わせる。** 同じ仕様を複数の層で重複して検証しない。重複すると、仕様を1つ変えたときに複数のテストが同時に落ち、どれが本体の仕様なのかが分からなくなる。
 
-- **models/**: フィールドのデフォルト値、`Meta.constraints`(DB制約が実際に効くこと)、カスタムQuerySetの絞り込み条件、自身の属性だけで判定する状態判定メソッド(Validation Rules/QuerySet Rules参照)
-- **lib/validators/**: Pure Functionの正常系と、失敗時に送出される`ValidationError`の`code`(Validator Rules参照)
-- **forms/**: 画面の入力契約。`fields`に出している項目、妥当な入力が通ること、業務ルール違反の入力で`form.errors`に想定の文言が出ること。validatorの網羅は`lib/validators/`で済んでいるため、ここでは「フォームに繋がっていること」を1ケース確認するに留める
+- **models/**: フィールドのデフォルト値、`Meta.constraints`(DB制約が実際に効くこと)、`Model.clean()`の業務ルール、状態を変える操作のメソッド(可否の確認と送出される`ValidationError`の`code`、変更後の状態)、状態判定メソッド、カスタムQuerySetの絞り込み条件(Validation Rules/QuerySet Rules参照)。業務ルールは`full_clean()`を呼んで検証する。フィールドに付けたvalidatorは、網羅を`validators_test.py`に任せ、ここでは「フィールドに繋がっていること」を1ケース確認するに留める
+- **validators_test.py**: validatorの正常系と、失敗時に送出される`ValidationError`の`code`(Validator Rules参照)。Djangoのvalidatorを設定しただけのものも、正規表現などの設定値が仕様そのものであるため網羅する
+- **forms/**: 画面の入力契約。`fields`に出している項目、妥当な入力が通ること、画面固有の検証(Form Rules参照)。モデル由来の検証はmodels/で網羅済みのため、フォームでは再検証しない
 - **views/**: 1リクエストの結果として外から観測できること。ステータスコード、リダイレクト先、`response.context`の内容、DBの変化、`messages`、権限による403/404の切り分け(Read Rules/View Write Rules参照)
-- **lib/**: 入力に対する戻り値を、関数・クラスを直接呼んで検証する。`app/lib/`はDBを「変更しない」補助ロジックの置き場であり(Common Module Rules参照)、読み取りは行いうるため、必要なら`pytest.mark.django_db`を付けてよい。DBを一切呼ばない契約が求められるのは`lib/validators/`の方(Validator Rules参照)。`request`やテストクライアントは使わない。ここで直接呼ぶのは公開されたモジュール間インターフェースであり、`_`始まりの実装詳細とは別物である(Function Signature Rules参照)
+- **lib/**: 入力に対する戻り値を、関数・クラスを直接呼んで検証する。`app/lib/`はDBを「変更しない」補助ロジックの置き場であり(Common Module Rules参照)、読み取りは行いうるため、必要なら`pytest.mark.django_db`を付けてよい。DBを一切呼ばない契約が求められるのは`app/validators.py`の方(Validator Rules参照)。`request`やテストクライアントは使わない。ここで直接呼ぶのは公開されたモジュール間インターフェースであり、`_`始まりの実装詳細とは別物である(Function Signature Rules参照)
 - **人の判断でトップレベルへ移したディレクトリ**(Common Module Rules参照): `app/lib/`にあったときと同じく、公開インターフェースを直接呼んで、戻り値と送出される例外を検証する
 - **e2e/**: 画面をまたぐ主要な導線を、ページ単位で1経路ずつ。実行が遅く壊れやすいため、ユニットテストで検証済みの分岐をE2Eで再検証しない
 
@@ -1188,7 +1167,7 @@ class TestTaskComplete:
 「社員番号の形式」という1つの仕様を、層をまたいで重複させない書き分け。
 
 ```python
-# tests/app/lib/validators/employee_test.py — 形式の仕様はここで網羅する
+# tests/app/validators_test.py — 形式の仕様はここで網羅する
 
 # 規定の形式に合う社員番号は受け付けること
 def test_validate_employee_number_format_accepts_valid_value():
@@ -1203,14 +1182,15 @@ def test_validate_employee_number_format_rejects_lowercase_prefix():
 ```
 
 ```python
-# tests/app/forms/employee_test.py — validatorが繋がっていることだけを1ケース確認する
+# tests/app/models/employee_test.py — validatorがフィールドに繋がっていることだけを1ケース確認する
 
-# 形式違反の社員番号はフォームのエラーになること(形式のパターン網羅はvalidators側で行う)
+# 形式違反の社員番号は検証エラーになること(形式のパターン網羅はvalidators_test.pyで行う)
 @pytest.mark.django_db
-def test_form_rejects_invalid_employee_number_format():
-    form = EmployeeForm({'employee_number': 'INVALID'})
-    assert not form.is_valid()
-    assert 'employee_number' in form.errors
+def test_full_clean_rejects_invalid_employee_number_format():
+    employee = Employee(employee_number='INVALID')
+    with pytest.raises(ValidationError) as error:
+        employee.full_clean()
+    assert 'employee_number' in error.value.error_dict
 ```
 
 ```python
@@ -1234,7 +1214,7 @@ def test_create_with_invalid_input_does_not_create_record(auth_client):
 
 - **モックしてよいのは、テストから制御できない外部のみ**: 外部サービスへのHTTP通信、メール送信、課金、乱数。自分のコード(model/form/view/validator/lib)はモックしない
 - **DBはモックしない**: テスト用DBを使う(`pytest.mark.django_db`)。DBアクセスをモックすると、制約・絞り込み条件という仕様そのものが検証されなくなる
-- **時刻に依存する仕様は、モックより引数で渡す設計にする**: 書き込みヘルパーが基準時刻を引数で受け取れば、テストはただ値を渡すだけで済む(Function Signature Rules/View Write Rules参照)。設計上それができない場合に限り、時刻を固定するライブラリを使う
+- **時刻に依存する仕様は、モックより引数で渡す設計にする**: モデルのメソッドや書き込みヘルパーが基準時刻を引数で受け取れば、テストはただ値を渡すだけで済む(Function Signature Rules/View Write Rules参照)。設計上それができない場合に限り、時刻を固定するライブラリを使う
 - **`assert_called_once_with`を書きたくなったら設計を疑う**: 結果として観測できる状態が無いか探す。本当に観測点が無い場合(外部への通知など)に限り、モックで送信内容を検証する
 - **外部への通知は、送信されたこと自体を仕様として検証してよい**: ただし検証するのは宛先・内容といった外部との契約であり、内部のどの関数を経由したかではない
 
