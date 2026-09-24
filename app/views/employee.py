@@ -10,6 +10,7 @@ from app.lib.types import AuthenticatedHttpRequest
 from app.forms import EmployeeForm
 from app.models import Employee
 from app.permissions.access import can_create, can_delete, can_display_create_form, can_edit, can_view
+from app.permissions.roles import is_company_admin
 
 MODEL_NAME = 'Employee'
 
@@ -35,7 +36,11 @@ def show(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
     employee = get_object_or_404(Employee, pk=pk)
     if not can_view(request.user, MODEL_NAME, employee):
         raise PermissionDenied
-    return render(request, 'app/employee/show.html', {'employee': employee})
+    return render(request, 'app/employee/show.html', {
+        'employee': employee,
+        'employee_departments': employee.employee_departments.select_related('department__company'),
+        'can_manage_departments': is_company_admin(request.user),
+    })
 
 
 # 社員新規作成

@@ -1,5 +1,6 @@
 import pytest
 from playwright.sync_api import Page, expect
+from app.models import Company, Department
 
 
 # 社員の新規作成〜詳細確認〜編集〜削除までの一連のE2Eテスト
@@ -48,6 +49,29 @@ class TestEmployeeCrudFlow:
 
         expect(logged_in_page).to_have_url(f'{live_server_url}/employees/')
         expect(logged_in_page.locator('#employee-table')).not_to_contain_text('E9300')
+
+
+# 社員詳細画面から所属部門を追加し、外すまでの一連のE2Eテスト
+@pytest.mark.django_db
+class TestEmployeeDepartmentFlow:
+
+    # 詳細画面から部門を主務として追加すると一覧に表示され、外すと一覧から消えること
+    def test_add_and_remove_department(self, logged_in_page: Page, live_server_url, e2e_user):
+        company = Company.objects.create(name='サンプル株式会社')
+        Department.objects.create(company=company, name='開発部')
+        logged_in_page.goto(f'{live_server_url}/employees/{e2e_user.employee.pk}/')
+
+        logged_in_page.click('#add-employee-department-link')
+        logged_in_page.select_option('#id_department', label='サンプル株式会社 / 開発部')
+        logged_in_page.check('#id_is_primary')
+        logged_in_page.click('#employee-department-form-submit')
+
+        expect(logged_in_page.locator('#employee-departments')).to_contain_text('サンプル株式会社 / 開発部')
+        expect(logged_in_page.locator('#employee-departments')).to_contain_text('主務')
+
+        logged_in_page.click('.remove-employee-department')
+
+        expect(logged_in_page.locator('#employee-no-departments')).to_have_text('所属部門はありません')
 
 
 # 未ログイン時のアクセス制御に関するE2Eテスト

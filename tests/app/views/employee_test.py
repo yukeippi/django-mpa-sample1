@@ -58,6 +58,43 @@ class TestEmployeeShowView:
         response = admin_client.get('/employees/9999/')
         assert response.status_code == 404
 
+    # 所属部門の一覧に、会社名 / 部門名と主務か兼務かが表示されること
+    def test_show_lists_departments_with_primary_or_secondary(self, admin_client, sample_user):
+        employee = sample_user.employee
+        company = Company.objects.create(name='サンプル株式会社')
+        EmployeeDepartment.objects.create(
+            employee=employee, department=Department.objects.create(company=company, name='開発部'), is_primary=True
+        )
+        EmployeeDepartment.objects.create(
+            employee=employee, department=Department.objects.create(company=company, name='営業部')
+        )
+
+        content = admin_client.get(f'/employees/{employee.id}/').content.decode()
+
+        assert 'サンプル株式会社 / 開発部' in content
+        assert 'サンプル株式会社 / 営業部' in content
+        assert '主務' in content
+        assert '兼務' in content
+
+    # 所属が無い場合は「所属部門はありません」と表示されること
+    def test_show_without_departments_shows_empty_message(self, admin_client, sample_user):
+        content = admin_client.get(f'/employees/{sample_user.employee.id}/').content.decode()
+
+        assert '所属部門はありません' in content
+
+    # 全社管理者には「所属部門を追加」と各行の「外す」が表示されること
+    def test_show_by_admin_shows_add_and_remove_actions(self, admin_client, sample_user):
+        employee = sample_user.employee
+        company = Company.objects.create(name='サンプル株式会社')
+        relation = EmployeeDepartment.objects.create(
+            employee=employee, department=Department.objects.create(company=company, name='開発部')
+        )
+
+        content = admin_client.get(f'/employees/{employee.id}/').content.decode()
+
+        assert f'/employees/{employee.id}/departments/new/' in content
+        assert f'/employees/{employee.id}/departments/{relation.id}/delete/' in content
+
 
 @pytest.mark.django_db
 class TestEmployeeCreateView:
