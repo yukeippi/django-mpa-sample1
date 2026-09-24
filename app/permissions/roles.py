@@ -9,6 +9,12 @@ def is_admin(user: User) -> bool:
     return user.is_staff
 
 
+# 全社管理者の管理グループ(ManagementGroup.is_admin)のメンバーかどうかを判定する
+# (is_staffを見るis_admin()とは別の仕組み。社員・部門などの権限判定はこちらの管理グループに基づく)
+def is_company_admin(user: User) -> bool:
+    return ManagementGroup.objects.filter(members=user, is_admin=True).exists()
+
+
 # タスクを編集できるかどうかを判定
 # 管理者、作成者本人、担当者本人のいずれかであれば編集可能
 def can_edit_task(user: User, task: Task) -> bool:

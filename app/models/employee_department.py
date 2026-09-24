@@ -29,7 +29,15 @@ class EmployeeDepartment(models.Model):
         verbose_name_plural = '社員所属部門'
         constraints = [
             # 同じ社員・部門の組み合わせが重複しないようにする(full_clean()もこれを検証する)
-            models.UniqueConstraint(fields=['employee', 'department'], name='unique_employee_department'),
+            models.UniqueConstraint(
+                fields=['employee', 'department'], name='unique_employee_department',
+                violation_error_message='この社員は既にこの部門に所属しています。',
+            ),
+            # 主務は1人1つまで(主務の行だけを対象にした条件付きの一意制約。兼務はいくつでも持てる)
+            models.UniqueConstraint(
+                fields=['employee'], condition=models.Q(is_primary=True), name='unique_primary_department_per_employee',
+                violation_error_message='この社員には既に主務の部門があります。',
+            ),
         ]
 
     def __str__(self):

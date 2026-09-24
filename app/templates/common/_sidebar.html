@@ -8,7 +8,7 @@
         <a class="ds-nav-item" href="{% url 'app:task_index' %}"{% if 'task_' in current %} aria-current="page"{% endif %}><span class="ds-icon ds-icon--tasks"></span>タスク一覧</a>
         <a class="ds-nav-item" href="{% url 'app:employee_index' %}"{% if 'employee_' in current %} aria-current="page"{% endif %}><span class="ds-icon ds-icon--users"></span>社員一覧</a>
         <a class="ds-nav-item" href="{% url 'app:company_index' %}"{% if 'company_' in current %} aria-current="page"{% endif %}><span class="ds-icon ds-icon--building"></span>会社一覧</a>
-        <a class="ds-nav-item" href="{% url 'app:department_index' %}"{% if 'department_' in current %} aria-current="page"{% endif %}><span class="ds-icon ds-icon--sitemap"></span>部門一覧</a>
+        <a class="ds-nav-item" href="{% url 'app:department_index' %}"{% if current|slice:':11' == 'department_' %} aria-current="page"{% endif %}><span class="ds-icon ds-icon--sitemap"></span>部門一覧</a>
         {% if user.is_staff %}
         <a class="ds-nav-item" href="{% url 'app:management_group_index' %}"{% if 'management_group_' in current %} aria-current="page"{% endif %}><span class="ds-icon ds-icon--shield"></span>管理グループ一覧</a>
         {% endif %}
