@@ -36,7 +36,7 @@ class TestManagementGroupForm:
         assert form.is_valid()
 
     # 全社管理者でなく、部門・権限セット番号を指定していれば妥当と判定されること
-    # (is_adminと部門・権限セットの整合性そのものはService事前条件チェックの担当。Validation Rules参照)
+    # (is_adminと部門・権限セットの整合性そのものはモデル側の担当のため、tests/app/models/で網羅する)
     def test_valid_non_admin_data_is_valid(self, sample_department):
         form = ManagementGroupForm(data={
             'name': '開発チーム',

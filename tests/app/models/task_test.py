@@ -1,5 +1,6 @@
 import pytest
 from datetime import date, timedelta
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from app.models import Task
 
@@ -58,7 +59,22 @@ class TestTaskModel:
 
 
 
-    # 優先度が1-5の範囲外の場合はエラーになること(DB制約。Formのmin_value/max_valueが一次防衛)
+    # 優先度が1-5の範囲外の場合、full_clean()でpriorityのエラーになること
+    @pytest.mark.parametrize('priority', [0, 6])
+    def test_full_clean_rejects_priority_out_of_range(self, priority):
+        task = Task(title='Task', priority=priority)
+        with pytest.raises(ValidationError) as error:
+            task.full_clean()
+        assert 'priority' in error.value.error_dict
+
+    # 説明の形式違反はfull_clean()でdescriptionのエラーになること(形式のパターン網羅はvalidators_test.pyで行う)
+    def test_full_clean_rejects_description_without_issue_reference(self):
+        task = Task(title='Task', description='Issue番号を含まない説明文')
+        with pytest.raises(ValidationError) as error:
+            task.full_clean()
+        assert 'description' in error.value.error_dict
+
+    # 優先度が1-5の範囲外の場合はエラーになること(DB制約)
     def test_priority_must_be_in_valid_range(self):
         with pytest.raises(IntegrityError):
             Task.objects.create(title='Invalid Priority Task', priority=6)

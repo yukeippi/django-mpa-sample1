@@ -1,6 +1,8 @@
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import User
+from app.validators import validate_description_contains_issue_reference
 
 
 # タスク管理のためのサンプルモデル
@@ -12,16 +14,18 @@ class Task(models.Model):
     ]
 
     title = models.CharField(max_length=200, verbose_name='タイトル')
-    # 説明に関連するIssue番号(#123のような形式)を含めることを求める形式チェックは
-    # app/lib/validators/task.pyのPure Function(Form経由)で行う(Validator Rules参照)
-    description = models.TextField(blank=True, verbose_name='説明')
+    description = models.TextField(
+        blank=True, validators=[validate_description_contains_issue_reference], verbose_name='説明'
+    )
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
         default='todo',
         verbose_name='ステータス'
     )
-    priority = models.IntegerField(default=3, verbose_name='優先度')
+    priority = models.IntegerField(
+        default=3, validators=[MinValueValidator(1), MaxValueValidator(5)], verbose_name='優先度'
+    )
     assigned_to = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -48,7 +52,7 @@ class Task(models.Model):
         verbose_name = 'タスク'
         verbose_name_plural = 'タスク'
         constraints = [
-            # 優先度は1〜5の範囲(DB自身が保証できる制約。Formのmin_value/max_valueが一次防衛)
+            # 優先度は1〜5の範囲(DBでの保証。画面のエラーはpriorityフィールドのvalidatorsが出す)
             models.CheckConstraint(
                 condition=models.Q(priority__gte=1) & models.Q(priority__lte=5), name='task_priority_range',
             ),

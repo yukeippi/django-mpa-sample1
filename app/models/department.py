@@ -9,13 +9,6 @@ class DepartmentQuerySet(models.QuerySet):
     def with_company(self) -> Self:
         return self.select_related('company')
 
-    # 同じ会社・同じ名前の部門に絞り込む(自分自身は除く)。Serviceの事前条件チェックから呼ぶ
-    def duplicate_of(self, *, company, name, exclude_pk=None) -> Self:
-        queryset = self.filter(company=company, name=name)
-        if exclude_pk is not None:
-            queryset = queryset.exclude(pk=exclude_pk)
-        return queryset
-
 
 # 部門情報のためのサンプルモデル
 class Department(models.Model):
@@ -30,7 +23,7 @@ class Department(models.Model):
         verbose_name = '部門'
         verbose_name_plural = '部門'
         constraints = [
-            # 同じ会社内で部門名が重複しないようにする(競合時の最終防衛。Serviceの事前条件チェックが一次防衛)
+            # 同じ会社内で部門名が重複しないようにする(ModelFormがfull_clean()経由で画面のエラーにする)
             models.UniqueConstraint(fields=['company', 'name'], name='unique_department_name_per_company'),
         ]
 

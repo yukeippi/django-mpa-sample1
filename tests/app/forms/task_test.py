@@ -27,38 +27,6 @@ class TestTaskForm:
         assert not form.is_valid()
         assert 'title' in form.errors
 
-    # 優先度が範囲外の場合、フォームが無効と判定されること
-    def test_priority_out_of_range_is_invalid(self):
-        form = TaskForm(data={
-            'title': 'Task',
-            'description': '',
-            'status': 'todo',
-            'priority': 6,
-        })
-        assert not form.is_valid()
-        assert 'priority' in form.errors
-
-    # 説明に#が含まれる場合は妥当と判定されること
-    def test_description_with_hash_is_valid(self):
-        form = TaskForm(data={
-            'title': 'Task',
-            'description': '関連Issue: #123',
-            'status': 'todo',
-            'priority': 3,
-        })
-        assert form.is_valid()
-
-    # 説明に#が含まれない場合、フォームが無効と判定されること
-    def test_description_without_hash_is_invalid(self):
-        form = TaskForm(data={
-            'title': 'Task',
-            'description': 'Issue番号を含まない説明文',
-            'status': 'todo',
-            'priority': 3,
-        })
-        assert not form.is_valid()
-        assert 'description' in form.errors
-
     # 担当者を指定した場合、cleaned_dataにUserインスタンスとして反映されること
     def test_cleaned_data_includes_assigned_to(self):
         user = User.objects.create_user(username='formuser', password='pass12345')

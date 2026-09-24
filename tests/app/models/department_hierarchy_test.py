@@ -38,7 +38,7 @@ class TestDepartmentHierarchyModel:
         with pytest.raises(IntegrityError):
             DepartmentHierarchy.objects.create(department=department)
 
-    # 親部門に自分自身を指定した場合はエラーになること(DB制約。Serviceの事前条件チェックが一次防衛)
+    # 親部門に自分自身を指定した場合はエラーになること(DB制約)
     def test_parent_cannot_be_self(self):
         company = Company.objects.create(name='サンプル株式会社')
         department = Department.objects.create(company=company, name='営業部')
