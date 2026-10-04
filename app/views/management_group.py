@@ -14,7 +14,7 @@ from app.permissions.roles import is_admin
 @login_required
 def index(request: AuthenticatedHttpRequest) -> HttpResponse:
     _require_admin(request)
-    groups_qs = ManagementGroup.objects.all()
+    groups_qs = ManagementGroup.objects.order_by('name')
     paginator = Paginator(groups_qs, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'app/management_group/index.html', {

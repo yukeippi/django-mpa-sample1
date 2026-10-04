@@ -14,7 +14,7 @@ from app.permissions.roles import can_delete_task, can_edit_task
 # タスク一覧
 @login_required
 def index(request: AuthenticatedHttpRequest) -> HttpResponse:
-    tasks_qs = Task.objects.all()
+    tasks_qs = Task.objects.order_by('-created_at')
     paginator = Paginator(tasks_qs, 30)
     page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'app/task/index.html', {

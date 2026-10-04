@@ -17,7 +17,7 @@ MODEL_NAME = 'Company'
 # メリット(DBへのLIMIT/OFFSET)が失われるため、その場合はDB側で絞り込む方式への変更を検討する
 @login_required
 def index(request: AuthenticatedHttpRequest) -> HttpResponse:
-    companies_qs = Company.objects.all()
+    companies_qs = Company.objects.order_by('name')
     companies = [company for company in companies_qs if can_view(request.user, MODEL_NAME, company)]
     paginator = Paginator(companies, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -33,7 +33,10 @@ def show(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
     company = get_object_or_404(Company, pk=pk)
     if not can_view(request.user, MODEL_NAME, company):
         raise PermissionDenied
-    return render(request, 'app/company/show.html', {'company': company})
+    return render(request, 'app/company/show.html', {
+        'company': company,
+        'departments': company.departments.order_by('name'),
+    })
 
 
 # 会社新規作成

@@ -50,7 +50,6 @@ class Task(models.Model):
 
     class Meta:
         db_table = 'task'
-        ordering = ['-created_at']
         verbose_name = 'タスク'
         verbose_name_plural = 'タスク'
         constraints = [

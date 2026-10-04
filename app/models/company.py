@@ -9,7 +9,6 @@ class Company(models.Model):
 
     class Meta:
         db_table = 'company'
-        ordering = ['name']
         verbose_name = '会社'
         verbose_name_plural = '会社'
 

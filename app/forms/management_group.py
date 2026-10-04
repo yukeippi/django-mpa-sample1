@@ -1,5 +1,5 @@
 from django import forms
-from app.models import ManagementGroup
+from app.models import Department, ManagementGroup
 
 
 # 管理グループの新規作成・編集で使うフォーム
@@ -19,3 +19,7 @@ class ManagementGroupForm(forms.ModelForm):
             'name': {'unique': 'この管理グループ名は既に使用されています。'},
         }
 
+    # 部門の選択肢を会社名・部門名順に並べる(モデルにMeta.orderingを持たせないため、ここで指定する)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['department'].queryset = Department.objects.with_company().order_by('company__name', 'name')

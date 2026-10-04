@@ -28,7 +28,6 @@ class Employee(models.Model):
 
     class Meta:
         db_table = 'employee'
-        ordering = ['employee_number']
         verbose_name = '社員'
         verbose_name_plural = '社員'
 

@@ -17,7 +17,7 @@ MODEL_NAME = 'Department'
 # メリット(DBへのLIMIT/OFFSET)が失われるため、その場合はDB側で絞り込む方式への変更を検討する
 @login_required
 def index(request: AuthenticatedHttpRequest) -> HttpResponse:
-    departments_qs = Department.objects.with_company()
+    departments_qs = Department.objects.with_company().order_by('company__name', 'name')
     departments = [department for department in departments_qs if can_view(request.user, MODEL_NAME, department)]
     paginator = Paginator(departments, 10)
     page_obj = paginator.get_page(request.GET.get('page'))

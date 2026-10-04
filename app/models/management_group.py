@@ -20,7 +20,6 @@ class ManagementGroup(models.Model):
 
     class Meta:
         db_table = 'management_group'
-        ordering = ['name']
         verbose_name = '管理グループ'
         verbose_name_plural = '管理グループ'
         # is_adminと部門・権限セット設定の整合性(全社管理者は部門・権限セットを持たず、それ以外は両方必須)。
