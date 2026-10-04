@@ -19,7 +19,7 @@ MODEL_NAME = 'Employee'
 # メリット(DBへのLIMIT/OFFSET)が失われるため、その場合はDB側で絞り込む方式への変更を検討する
 @login_required
 def index(request: AuthenticatedHttpRequest) -> HttpResponse:
-    employees_qs = Employee.objects.with_user()
+    employees_qs = Employee.objects.with_user().order_by('employee_number')
     employees = [employee for employee in employees_qs if can_view(request.user, MODEL_NAME, employee)]
     paginator = Paginator(employees, 10)
     page_obj = paginator.get_page(request.GET.get('page'))

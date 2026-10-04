@@ -19,7 +19,6 @@ class Department(models.Model):
 
     class Meta:
         db_table = 'department'
-        ordering = ['company', 'name']
         verbose_name = '部門'
         verbose_name_plural = '部門'
         constraints = [

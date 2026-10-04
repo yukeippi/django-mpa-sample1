@@ -7,8 +7,8 @@
 
 ## 目次
 
-1. **全体構成** — File Structure Rules / Common Module Rules
-2. **モデル** — Model Table Naming Rules / QuerySet Rules / Migration Rules / Seed Data Rules
+1. **全体構成** — File Structure Rules / Common Module Rules / File Split Rules
+2. **モデル** — Model Table Naming Rules / QuerySet Rules / Ordering Rules / Migration Rules / Seed Data Rules
 3. **入力と検証** — Validation Rules / Form Rules / Validator Rules
 4. **ビュー** — View Naming Rules / View Method-Branch Rules / Read Rules / View Write Rules / Service Rules
 5. **テンプレートとCSS** — Layout Rules / Template Directory Rules / Template Rules / Partial Template Rules / CSS Rules
@@ -90,6 +90,55 @@ common/                    # 複数アプリ間で共有するモジュール(�
 
 経緯: ADR-0002
 
+### File Split Rules
+
+ファイルが大きくなったときの分け方。各層に共通する考え方を先に書き、層ごとの適用をその後に書く。
+
+- **全体共通の技術的な種類のディレクトリを作らない**: `app/querysets/`、`app/helpers/`、`app/constants/`のような、複数のモデル(または機能)のコードを種類でまとめたディレクトリを作らない。別々のモデルのものが1か所に並ぶと、他からも参照される部品に見え、変更のたびに影響範囲の確認が必要になる。分ける場合は、そのモデル専用であることがパスで分かる形にする(層ごとの適用を参照)
+- **分けるきっかけは機械的に決める**: 「責務が分かれたか」の判断を分割の条件にしない。層ごとの適用に書いた、境目がはっきりしたものだけを分ける
+- **肥大化に気づいたら人に相談する**: ファイルが大きいことは、1つのモデルに別々の関心事(例: 公開ワークフローと閲覧統計)が混ざっているサインであることが多い。ただし、関心事で分けるか・モデル自体を分けるかはAIの判断では行わず、人に相談する
+
+#### 層ごとの適用
+
+- **models/**: QuerySetが増えてモデルのファイルが読みにくくなったら、そのモデルをディレクトリにし、QuerySetを`querysets.py`に出してよい(下記「モデルをディレクトリにする場合」参照)。モデルのメソッドは分けない。メソッドを関心事ごとのMixin(`publishing.py`など)に分けるのは、人が関心事の名前を決めたときに限る。`mixin.py`のように何でも入れられるファイルは作らない。複数モデルにまたがる手順や通知がモデルを大きくしている場合は、serviceへの切り出しを人に提案する(Service Rules参照)
+- **views/・forms/・templates/**: ディレクトリにして分けることはしない(今のところmodels/だけに認めている)。ファイルの単位はモデル(または機能)に従う(View Naming Rules/Template Directory Rules参照)。モデルが分かれたら、それに合わせて`views/<model>.py`・`forms/<model>.py`・`templates/app/<model>/`も分ける。モデルが1つのままviewのファイルだけが大きい場合は、privateヘルパーを別ファイルに切り出さない。serviceへの切り出しを人に提案する(Service Rules参照)
+- **lib/**: もともと関心事ごとに分ける置き場のため、Common Module Rulesのとおり関心事ごとにファイル・ディレクトリを分けてよい(例: `utils.py` → `utils/date.py`)
+- **tests/**: ソース側の分け方に合わせる(File Structure Rules参照)。モデルをディレクトリにした場合は、テストも`tests/app/models/<model>/model_test.py`・`querysets_test.py`に分ける。テストファイルだけが大きい場合も、ソース側のファイルとの1対1の対応は崩さない
+
+#### モデルをディレクトリにする場合
+
+Pythonは`article.py`と`article/`が同時にあるとディレクトリ側を読み込むため、両方を置くことはできない。`article.py`をディレクトリに移し、モデル本体は`model.py`とする(`article/article.py`のように同じ名前を繰り返さない。どのモデルでも同じファイル名になるため、開いたときに迷わない)。
+
+- `__init__.py`ではモデルを読み込み直すだけにする。これにより`from app.models.article import Article`は分ける前と同じまま使える
+- `querysets.py`の中でモデルを参照するときは、`Article.Status.PUBLISHED`ではなく`self.model.Status.PUBLISHED`と書く。`model.py`が`querysets.py`をimportしているため、逆向きにimportすると循環importになる
+
+```
+app/models/article/
+├── __init__.py     # from .model import Article だけ
+├── model.py        # モデル本体
+└── querysets.py    # ArticleQuerySet
+```
+
+```python
+# app/models/article/querysets.py
+
+class ArticleQuerySet(models.QuerySet):
+
+    # 公開済みの記事に絞り込む
+    def published(self) -> Self:
+        return self.filter(status=self.model.Status.PUBLISHED)
+```
+
+```python
+# app/models/article/model.py
+from app.models.article.querysets import ArticleQuerySet
+
+
+class Article(models.Model):
+    ...
+    objects = ArticleQuerySet.as_manager()
+```
+
 ## モデル
 
 ### Model Table Naming Rules
@@ -113,8 +162,11 @@ class ManagementGroup(models.Model):
 
 繰り返し使う絞り込み条件は、viewに直接書かず、カスタムQuerySetのメソッドとして定義する。同じ`filter()`が複数箇所に散ることを防ぎ、条件に業務上の名前を与えるため。
 
-- `app/models/<model>.py`内に、対応するモデルと同じファイルで定義する。全モデル分を1ファイルに集約しない
+- `app/models/<model>.py`内に、対応するモデルと同じファイルで定義する。全モデル分を1ファイルに集約しない。QuerySetが増えてファイルが読みにくくなった場合は、そのモデルをディレクトリにして`querysets.py`に出してよい(File Split Rules参照)
 - モデルには`objects = XxxQuerySet.as_manager()`で紐づける
+- **同じファイルに書く場合、QuerySetは対応するモデルの直前に書く**: クラス本体の`objects = XxxQuerySet.as_manager()`はクラス定義時にその場で実行されるため、QuerySetをモデルより後ろに書くと`NameError`になる。なお、QuerySetのメソッド内(`def`の中)でモデルを参照するのは、呼び出し時に実行されるため問題ない(下記Exampleの`Task.Status.COMPLETED`)
+- **`objects`は常に明示する**: Djangoは「Managerが1つも定義されていない場合だけ」`objects`を自動で付ける。この暗黙の挙動に依存しないよう、カスタムQuerySetがないモデルでも`objects = models.Manager()`を書く。別のManagerを追加した際に`objects`が消える事故も防げる
+- **`objects`は他のManagerより上に書く**: 最初に定義されたManagerがデフォルトマネージャーになり、管理画面や逆参照(`company.departments`など)で使われるため、全件を返す`objects`を必ず先頭にする
 - QuerySetは読み取り専用とする。状態変更や副作用を持たせない
 - 一覧表示で関連を辿る場合の`select_related`/`prefetch_related`もQuerySetメソッドにまとめる
 
@@ -141,6 +193,59 @@ class TaskQuerySet(models.QuerySet):
 class Task(models.Model):
     objects = TaskQuerySet.as_manager()
     ...
+```
+
+```python
+# app/models/company.py — カスタムQuerySetがないモデルでもobjectsを書く
+
+class Company(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    objects = models.Manager()
+    ...
+```
+
+### Ordering Rules
+
+モデルに`Meta.ordering`を書かない。並び順は、並び替えが必要なクエリで`order_by()`を指定する。
+
+`Meta.ordering`を書くと、そのモデルへのすべてのクエリにORDER BYが付く。件数の確認、存在確認、権限判定のための取得、関連の取得など、並び替えが不要なクエリにもORDER BYが付き、知らないうちにコストが発生する。どのクエリが並び替えているかもコードから見えなくなる。
+
+- **一覧画面**: viewで`order_by()`を指定する。`Paginator`に渡すQuerySetには必ず並び順を指定する。指定しないとDjangoが警告を出し、ページをまたいで同じ行が重複・欠落することがある
+- **フォームの選択肢**: ModelFormの外部キー・多対多の選択肢は、フォームの`__init__`で`self.fields['<field>'].queryset`に`order_by()`したQuerySetを入れる。フィールドを宣言し直さない(Form Rules参照)
+- **テンプレートで関連をたどって並べて表示する場合**: テンプレートでは並び順を指定できない。並び順が必要なら`{% for x in obj.children.all %}`のように書かず、viewで`order_by()`したQuerySetを作ってcontextに渡す
+- **並び替えが不要なクエリには付けない**: APIの返却やバッチ処理など、並び順を求められていないクエリに`order_by()`を付けない
+- **繰り返し使う並び順**: 複数のキーを組み合わせるなど、並び順そのものに業務上の意味がある場合は、QuerySetのメソッドにしてよい(QuerySet Rules参照)。単純な1〜2キーの並びは、使う場所で`order_by()`を直接書く
+
+#### Example
+
+```python
+# app/views/company.py
+@login_required
+def index(request: HttpRequest) -> HttpResponse:
+    companies_qs = Company.objects.order_by('name')
+    paginator = Paginator(companies_qs, 10)
+    ...
+
+
+@login_required
+def show(request: HttpRequest, pk: int) -> HttpResponse:
+    company = get_object_or_404(Company, pk=pk)
+    return render(request, 'app/company/show.html', {
+        'company': company,
+        'departments': company.departments.order_by('name'),
+    })
+```
+
+```python
+# app/forms/department.py
+class DepartmentForm(forms.ModelForm):
+    ...
+
+    # 会社の選択肢を会社名順に並べる
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['company'].queryset = Company.objects.order_by('name')
 ```
 
 ### Migration Rules
@@ -496,7 +601,7 @@ def _render_edit_form(request, task, form):
 **viewからの読み取りはDjango本来の位置で行う。** 独自のselector層は作らない。
 
 - **単一取得**: viewで`get_object_or_404(Model, pk=pk)`を直接呼ぶ。`Http404`はHTTPの関心事であり、modelには置かない
-- **一覧取得**: `Model.objects.all()`、または繰り返し使う絞り込み・関連の先読みがある場合はカスタムQuerySetのメソッドを呼ぶ(QuerySet Rules参照)。ページネーション等の都合があるため、viewは評価前の`QuerySet`を受け取る
+- **一覧取得**: `Model.objects.all()`、または繰り返し使う絞り込み・関連の先読みがある場合はカスタムQuerySetのメソッドを呼ぶ(QuerySet Rules参照)。ページネーション等の都合があるため、viewは評価前の`QuerySet`を受け取る。一覧の並び順はviewで`order_by()`を指定する(Ordering Rules参照)
 - **権限スコープによる絞り込み**: QuerySetのカスタムメソッド(`owned_by`等)に寄せ、viewは`get_object_or_404(Task.objects.owned_by(request.user), pk=pk)`のように渡すだけにする
 - **404にするのは「存在しない/権限のスコープ外」だけ**: 「存在はするが今は編集できない」のような業務ルールによる操作不可は404にせず、モデルのメソッドが`ValidationError`を送出する(View Write Rules参照)。混同するとURLを直接叩いた場合の挙動(404かエラーメッセージか)が食い違う
 
@@ -509,7 +614,7 @@ from django.shortcuts import get_object_or_404
 
 @login_required
 def index(request: HttpRequest) -> HttpResponse:
-    tasks_qs = Task.objects.with_details()
+    tasks_qs = Task.objects.with_details().order_by('-created_at')
     paginator = Paginator(tasks_qs, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'app/task/index.html', {'tasks': page_obj, 'page_obj': page_obj})
@@ -526,7 +631,7 @@ def edit(request: HttpRequest, pk: int) -> HttpResponse:
 
 業務ルールの検証と、1つのモデルの状態を変える操作は、モデルに置く(Validation Rules参照)。viewが持つのは、フォームの束縛・モデルのメソッドの呼び出し・トランザクションの境界・複数モデルにまたがる手順・通知である。`app/services/`のようなDjangoが標準で持たない層を既定では作らない。
 
-そのviewからしか使われない手順を別ディレクトリに置くと、読むときの追跡が増えるだけで、得られるものが無いため。1つのviewと運命を共にする処理は、そのviewと同じファイルにあるのが最も追いやすい。層を跨いで共有したくなった場合の扱いはService Rulesを参照。
+そのviewからしか使われない手順を別ディレクトリに置くと、読むときの追跡が増えるだけで、得られるものが無いため。1つのviewと運命を共にする処理は、そのviewと同じファイルにあるのが最も追いやすい。viewが肥大化した場合の扱いはService Rulesを参照。
 
 #### 配置
 
@@ -643,17 +748,67 @@ def _apply_completion(*, task: Task, operator: User) -> Task:
 
 ### Service Rules
 
-`app/services/`は既定では作らない。書き込みの手順はView Write Rulesに従いviewに置く。
+`app/services/`は既定では作らない。書き込みの手順はView Write Rulesに従いviewに置き、1つのモデルの状態を変える操作はモデルのメソッドに置く(Validation Rules参照)。
 
-次のいずれかに当てはまった時点で、はじめて`app/services/<model>.py`へ切り出す。
+serviceは、邪魔になったメソッドの退避場所ではない。意味のある処理のまとまりに名前を付け、クラスとしてカプセルにしたものである。クラス名を読めば、何の処理を、なぜviewやモデルから分けたのかが分かるようにする。
 
-- **複数のviewから同じ業務操作を呼ぶ場合** — 一方のviewに置いて他方からimportすると、view同士が依存し合う
-- **view以外の入口からも呼ぶ場合** — 管理コマンド、バッチ、外部API連携など。viewに置いた処理はHTTP経由でしか呼べない
-- **複数モデルにまたがる大きなユースケース** — 1つのviewのprivateヘルパー群に収まらず、手順そのものに名前を付けたい規模になった場合
+#### 分けるかどうかは人が決める
 
-切り出す場合の書き方はView Write Rulesの書き込みヘルパーと同じ(キーワード専用引数、`HttpRequest`を受け取らない、`@transaction.atomic`、変更→記録→通知の順、可否の確認はモデルのメソッドに任せる)。`app/services/<model>.py`に関数として定義し、`__init__.py`では`views/`と同様にモジュール単位でインポートして`services.<model>.<関数名>`の形で参照する。
+**AIはserviceへの切り出しを提案するだけで、自分の判断で切り出さない。** 提案するのは、viewやモデルが肥大化したときに限る。肥大化していなければ提案もしない。
 
-**逆に、1つのviewからしか呼ばれない状態が続くserviceはviewへ戻す。** 呼び出し元が1箇所しかない層は、追跡の手間を増やすだけで何も守っていない。
+提案のきっかけになる典型例:
+
+- 1つのアクションの処理が複雑になり、viewのprivateヘルパー群が読みにくくなった
+- 複数のアクションが、同じ手順・同じ可否の確認・同じ通知を共有している
+- 複数のviewや、view以外の入口(管理コマンド、バッチ、外部API連携など)から同じ業務操作を呼びたい
+
+呼び出し元が1つでも、人が決めたserviceはviewへ戻さない。
+
+#### 書き方
+
+- **ファイルはモデル単位**: `app/services/<model>.py`に置く。`__init__.py`では`views/`と同様にモジュール単位でインポートし、`services.<model>.<クラス名>`の形で参照する
+- **処理のまとまりごとにクラスを作る**: 1つのファイルの中で、処理のまとまりごとにクラスを分ける(例: `services/task.py`の中の`TaskAssignment`)。公開する操作が1つだけでもクラスにする。クラスがserviceの境界を示すため、モジュール直下に関数を置かない
+- **クラス名は処理の名前にする**: `TaskService`のような、モデル名に`Service`を付けただけの名前にしない。何でも入れられる置き場になる
+- **共通の親クラスを作らない**: `BaseService`のような基底クラスは作らない(Inheritance Rules参照)
+- **書き込みの書き方はView Write Rulesの書き込みヘルパーと同じ**: 引数はキーワード専用にする。`HttpRequest`を受け取らない。公開メソッドに`@transaction.atomic`を付ける。変更→記録→通知の順に書く。可否の確認はモデルのメソッドに任せる
+- **メソッドの並び**: 公開メソッドを上に、複数の操作で共有するprivateメソッド(`_`始まり)を下に書く
+
+#### Example
+
+```python
+# app/services/task.py
+
+# タスクの担当者の割り当て・解除(担当変更の記録と通知を共有するためまとめる)
+class TaskAssignment:
+    def __init__(self, *, task: Task, operator: User) -> None:
+        self.task = task
+        self.operator = operator
+
+    # 担当者を割り当てる
+    @transaction.atomic
+    def assign(self, *, assignee: User) -> None:
+        self.task.assign(assignee)  # 可否の確認と状態の変更はモデルのメソッド
+        self._record_and_notify()
+
+    # 担当者を外す
+    @transaction.atomic
+    def unassign(self) -> None:
+        self.task.unassign()
+        self._record_and_notify()
+
+    # 担当変更を記録し、コミット後に通知する
+    def _record_and_notify(self) -> None:
+        TaskAssignmentLog.objects.create(task=self.task, operator=self.operator, assignee=self.task.assigned_to)
+        transaction.on_commit(lambda: send_assignment_notice(self.task))
+```
+
+```python
+# app/views/task.py
+def _assign_task(request, task):
+    ...
+    services.task.TaskAssignment(task=task, operator=request.user).assign(assignee=form.cleaned_data['assignee'])
+    ...
+```
 
 ## テンプレートとCSS
 
@@ -1159,6 +1314,7 @@ class TestTaskComplete:
 - **forms/**: 画面の入力契約。`fields`に出している項目、妥当な入力が通ること、画面固有の検証(Form Rules参照)。モデル由来の検証はmodels/で網羅済みのため、フォームでは再検証しない
 - **views/**: 1リクエストの結果として外から観測できること。ステータスコード、リダイレクト先、`response.context`の内容、DBの変化、`messages`、権限による403/404の切り分け(Read Rules/View Write Rules参照)
 - **lib/**: 入力に対する戻り値を、関数・クラスを直接呼んで検証する。`app/lib/`はDBを「変更しない」補助ロジックの置き場であり(Common Module Rules参照)、読み取りは行いうるため、必要なら`pytest.mark.django_db`を付けてよい。DBを一切呼ばない契約が求められるのは`app/validators.py`の方(Validator Rules参照)。`request`やテストクライアントは使わない。ここで直接呼ぶのは公開されたモジュール間インターフェースであり、`_`始まりの実装詳細とは別物である(Function Signature Rules参照)
+- **services/**: serviceのクラスをインスタンス化して公開メソッドを直接呼び、DBの変化と送出される`ValidationError`の`code`を検証する。`request`やテストクライアントは使わない。privateメソッドは直接呼ばない。モデルのメソッドが持つ可否の確認はmodels/で網羅済みのため、serviceでは再検証しない
 - **人の判断でトップレベルへ移したディレクトリ**(Common Module Rules参照): `app/lib/`にあったときと同じく、公開インターフェースを直接呼んで、戻り値と送出される例外を検証する
 - **e2e/**: 画面をまたぐ主要な導線を、ページ単位で1経路ずつ。実行が遅く壊れやすいため、ユニットテストで検証済みの分岐をE2Eで再検証しない
 

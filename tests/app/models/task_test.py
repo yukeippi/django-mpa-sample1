@@ -44,17 +44,6 @@ class TestTaskModel:
         task = Task.objects.create(title='String Test Task')
         assert str(task) == 'String Test Task'
 
-    # タスクが作成日時の降順でソートされること
-    def test_task_ordering(self):
-        task1 = Task.objects.create(title='First Task')
-        task2 = Task.objects.create(title='Second Task')
-        task3 = Task.objects.create(title='Third Task')
-
-        tasks = list(Task.objects.all())
-        assert tasks[0] == task3
-        assert tasks[1] == task2
-        assert tasks[2] == task1
-
 
 
 

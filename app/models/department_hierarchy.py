@@ -12,6 +12,8 @@ class DepartmentHierarchy(models.Model):
         related_name='child_hierarchies', verbose_name='親部門'
     )
 
+    objects = models.Manager()
+
     class Meta:
         db_table = 'department_hierarchy'
         verbose_name = '部門階層'
