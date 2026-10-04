@@ -46,6 +46,8 @@ class Task(models.Model):
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新日時')
     due_date = models.DateField(null=True, blank=True, verbose_name='期限')
 
+    objects = models.Manager()
+
     class Meta:
         db_table = 'task'
         ordering = ['-created_at']

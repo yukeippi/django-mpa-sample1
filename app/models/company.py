@@ -5,6 +5,8 @@ from django.db import models
 class Company(models.Model):
     name = models.CharField(max_length=100, unique=True, verbose_name='会社名')
 
+    objects = models.Manager()
+
     class Meta:
         db_table = 'company'
         ordering = ['name']

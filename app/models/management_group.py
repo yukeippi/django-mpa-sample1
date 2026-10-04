@@ -16,6 +16,8 @@ class ManagementGroup(models.Model):
     )
     permission_set_id = models.IntegerField(null=True, blank=True, verbose_name='権限セット番号')
 
+    objects = models.Manager()
+
     class Meta:
         db_table = 'management_group'
         ordering = ['name']
