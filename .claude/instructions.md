@@ -8,7 +8,7 @@
 ## 目次
 
 1. **全体構成** — File Structure Rules / Common Module Rules / File Split Rules
-2. **モデル** — Model Table Naming Rules / QuerySet Rules / Migration Rules / Seed Data Rules
+2. **モデル** — Model Table Naming Rules / QuerySet Rules / Ordering Rules / Migration Rules / Seed Data Rules
 3. **入力と検証** — Validation Rules / Form Rules / Validator Rules
 4. **ビュー** — View Naming Rules / View Method-Branch Rules / Read Rules / View Write Rules / Service Rules
 5. **テンプレートとCSS** — Layout Rules / Template Directory Rules / Template Rules / Partial Template Rules / CSS Rules
@@ -203,6 +203,49 @@ class Company(models.Model):
 
     objects = models.Manager()
     ...
+```
+
+### Ordering Rules
+
+モデルに`Meta.ordering`を書かない。並び順は、並び替えが必要なクエリで`order_by()`を指定する。
+
+`Meta.ordering`を書くと、そのモデルへのすべてのクエリにORDER BYが付く。件数の確認、存在確認、権限判定のための取得、関連の取得など、並び替えが不要なクエリにもORDER BYが付き、知らないうちにコストが発生する。どのクエリが並び替えているかもコードから見えなくなる。
+
+- **一覧画面**: viewで`order_by()`を指定する。`Paginator`に渡すQuerySetには必ず並び順を指定する。指定しないとDjangoが警告を出し、ページをまたいで同じ行が重複・欠落することがある
+- **フォームの選択肢**: ModelFormの外部キー・多対多の選択肢は、フォームの`__init__`で`self.fields['<field>'].queryset`に`order_by()`したQuerySetを入れる。フィールドを宣言し直さない(Form Rules参照)
+- **テンプレートで関連をたどって並べて表示する場合**: テンプレートでは並び順を指定できない。並び順が必要なら`{% for x in obj.children.all %}`のように書かず、viewで`order_by()`したQuerySetを作ってcontextに渡す
+- **並び替えが不要なクエリには付けない**: APIの返却やバッチ処理など、並び順を求められていないクエリに`order_by()`を付けない
+- **繰り返し使う並び順**: 複数のキーを組み合わせるなど、並び順そのものに業務上の意味がある場合は、QuerySetのメソッドにしてよい(QuerySet Rules参照)。単純な1〜2キーの並びは、使う場所で`order_by()`を直接書く
+
+#### Example
+
+```python
+# app/views/company.py
+@login_required
+def index(request: HttpRequest) -> HttpResponse:
+    companies_qs = Company.objects.order_by('name')
+    paginator = Paginator(companies_qs, 10)
+    ...
+
+
+@login_required
+def show(request: HttpRequest, pk: int) -> HttpResponse:
+    company = get_object_or_404(Company, pk=pk)
+    return render(request, 'app/company/show.html', {
+        'company': company,
+        'departments': company.departments.order_by('name'),
+    })
+```
+
+```python
+# app/forms/department.py
+class DepartmentForm(forms.ModelForm):
+    ...
+
+    # 会社の選択肢を会社名順に並べる
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['company'].queryset = Company.objects.order_by('name')
 ```
 
 ### Migration Rules
@@ -558,7 +601,7 @@ def _render_edit_form(request, task, form):
 **viewからの読み取りはDjango本来の位置で行う。** 独自のselector層は作らない。
 
 - **単一取得**: viewで`get_object_or_404(Model, pk=pk)`を直接呼ぶ。`Http404`はHTTPの関心事であり、modelには置かない
-- **一覧取得**: `Model.objects.all()`、または繰り返し使う絞り込み・関連の先読みがある場合はカスタムQuerySetのメソッドを呼ぶ(QuerySet Rules参照)。ページネーション等の都合があるため、viewは評価前の`QuerySet`を受け取る
+- **一覧取得**: `Model.objects.all()`、または繰り返し使う絞り込み・関連の先読みがある場合はカスタムQuerySetのメソッドを呼ぶ(QuerySet Rules参照)。ページネーション等の都合があるため、viewは評価前の`QuerySet`を受け取る。一覧の並び順はviewで`order_by()`を指定する(Ordering Rules参照)
 - **権限スコープによる絞り込み**: QuerySetのカスタムメソッド(`owned_by`等)に寄せ、viewは`get_object_or_404(Task.objects.owned_by(request.user), pk=pk)`のように渡すだけにする
 - **404にするのは「存在しない/権限のスコープ外」だけ**: 「存在はするが今は編集できない」のような業務ルールによる操作不可は404にせず、モデルのメソッドが`ValidationError`を送出する(View Write Rules参照)。混同するとURLを直接叩いた場合の挙動(404かエラーメッセージか)が食い違う
 
@@ -571,7 +614,7 @@ from django.shortcuts import get_object_or_404
 
 @login_required
 def index(request: HttpRequest) -> HttpResponse:
-    tasks_qs = Task.objects.with_details()
+    tasks_qs = Task.objects.with_details().order_by('-created_at')
     paginator = Paginator(tasks_qs, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'app/task/index.html', {'tasks': page_obj, 'page_obj': page_obj})
