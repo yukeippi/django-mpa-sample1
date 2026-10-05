@@ -8,7 +8,7 @@
 ## 目次
 
 1. **全体構成** — File Structure Rules / Common Module Rules / File Split Rules
-2. **モデル** — Model Table Naming Rules / QuerySet Rules / Ordering Rules / Migration Rules / Seed Data Rules
+2. **モデル** — Model Table Naming Rules / Foreign Key Naming Rules / QuerySet Rules / Ordering Rules / Migration Rules / Seed Data Rules
 3. **入力と検証** — Validation Rules / Form Rules / Validator Rules
 4. **ビュー** — View Naming Rules / View Method-Branch Rules / Read Rules / View Write Rules / Service Rules
 5. **テンプレートとCSS** — Layout Rules / Template Directory Rules / Template Rules / Partial Template Rules / CSS Rules
@@ -156,6 +156,26 @@ class ManagementGroup(models.Model):
         db_table = 'management_group'
 
     ...
+```
+
+### Foreign Key Naming Rules
+
+外部キー(`ForeignKey`/`OneToOneField`)のカラム名は、Railsの規約に合わせて`<参照先モデル名のスネークケース>_id`にする。Djangoはフィールド名に`_id`を付けたものをカラム名にするため、フィールド名を参照先モデル名のスネークケースにすればこの形になる。
+
+- フィールド名には`_id`を付けない(`department_id = models.ForeignKey(...)`とするとカラム名が`department_id_id`になる)
+- `db_column`でカラム名を変えない。フィールド名とカラム名の対応がずれ、コードとDBを見比べにくくなる
+- 同じモデルを複数回参照するときや、参照の役割を名前で示したいときは、`<役割>_<参照先モデル名のスネークケース>`にする(カラム名は`<役割>_<参照先モデル名>_id`)。参照先がどのモデルかをカラム名から分かるようにするため、役割だけの名前(`assigned_to`、`parent`等)にはしない
+
+#### Example
+
+```python
+class Task(models.Model):
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, verbose_name='部門')  # department_id
+    assigned_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='assigned_tasks', verbose_name='担当者')  # assigned_user_id
+    created_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_tasks', verbose_name='作成者')  # created_user_id
+
+class DepartmentHierarchy(models.Model):
+    parent_department = models.ForeignKey(Department, null=True, on_delete=models.CASCADE, verbose_name='親部門')  # parent_department_id
 ```
 
 ### QuerySet Rules
