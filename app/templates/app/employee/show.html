@@ -12,6 +12,7 @@
     </div>
 </div>
 
+<div class="ds-stack">
 <div class="ds-card ds-card--flush ds-card--narrow">
     <dl class="ds-detail">
         <div class="ds-detail-item">
@@ -23,5 +24,41 @@
             <dd class="ds-detail-value" id="employee-full-name">{{ employee }}</dd>
         </div>
     </dl>
+</div>
+
+{# 表はカードの縁まで広げる(--flush)。0件のときは空状態をカードの余白の内側に置くため--flushにしない #}
+<div class="ds-card ds-card--narrow{% if employee_departments %} ds-card--flush{% endif %}">
+    <div class="ds-card-header">
+        <h2 class="ds-card-title">所属部門</h2>
+        {% if can_manage_departments %}
+        <a href="{% url 'app:employee_department_new' employee.pk %}" id="add-employee-department-link" class="ds-btn ds-btn-sm">所属部門を追加</a>
+        {% endif %}
+    </div>
+    {% if employee_departments %}
+    <table class="ds-table" id="employee-departments">
+        <thead>
+            <tr><th>部門</th><th>区分</th>{% if can_manage_departments %}<th></th>{% endif %}</tr>
+        </thead>
+        <tbody>
+            {% for relation in employee_departments %}
+            <tr>
+                <td>{{ relation.department }}</td>
+                <td>{% if relation.is_primary %}主務{% else %}兼務{% endif %}</td>
+                {% if can_manage_departments %}
+                <td>
+                    <form method="post" action="{% url 'app:employee_department_delete' employee.pk relation.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="ds-btn ds-btn-sm ds-btn-danger remove-employee-department">外す</button>
+                    </form>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="ds-empty" id="employee-no-departments">所属部門はありません</p>
+    {% endif %}
+</div>
 </div>
 {% endblock %}

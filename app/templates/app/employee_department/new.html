@@ -1,0 +1,33 @@
+{% extends 'app/employee_department/base.html' %}
+
+{% block title %}所属部門の追加{% endblock %}
+
+{% block content %}
+<div class="ds-page-header">
+    <h1 class="ds-h1">所属部門の追加({{ employee }})</h1>
+</div>
+
+<div class="ds-card ds-card--narrow">
+    <form method="post" id="employee-department-form" class="ds-form">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="ds-alert ds-alert--error"><span class="ds-alert-message">{{ form.non_field_errors }}</span></div>
+        {% endif %}
+        <div class="ds-field">
+            <label for="{{ form.department.id_for_label }}" class="ds-label">部門</label>
+            {{ form.department }}
+            {% if form.department.errors %}
+            <div class="ds-field-error">{{ form.department.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="ds-field ds-field--check">
+            {{ form.is_primary }}
+            <label for="{{ form.is_primary.id_for_label }}" class="ds-label">主務(チェックしない場合は兼務)</label>
+        </div>
+        <div class="ds-form-actions">
+            <button type="submit" id="employee-department-form-submit" class="ds-btn ds-btn-primary">保存</button>
+            <a href="{% url 'app:employee_show' employee.pk %}" class="ds-btn">キャンセル</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
