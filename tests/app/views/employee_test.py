@@ -85,6 +85,22 @@ class TestEmployeeShowView:
         assert '主務' in content
         assert '兼務' in content
 
+    # 所属部門の一覧は会社名順、同じ会社の中では部門名順に並ぶこと
+    def test_show_lists_departments_ordered_by_company_name_then_name(self, admin_client, sample_user):
+        employee = sample_user.employee
+        company_b = Company.objects.create(name='B株式会社')
+        company_a = Company.objects.create(name='A株式会社')
+        for company, name in [(company_b, 'A部'), (company_a, 'B部'), (company_a, 'A部')]:
+            EmployeeDepartment.objects.create(
+                employee=employee, department=Department.objects.create(company=company, name=name)
+            )
+
+        response = admin_client.get(f'/employees/{employee.id}/')
+        assert [
+            (relation.department.company.name, relation.department.name)
+            for relation in response.context['employee_departments']
+        ] == [('A株式会社', 'A部'), ('A株式会社', 'B部'), ('B株式会社', 'A部')]
+
     # 所属が無い場合は「所属部門はありません」と表示されること
     def test_show_without_departments_shows_empty_message(self, admin_client, sample_user):
         content = admin_client.get(f'/employees/{sample_user.employee.id}/').content.decode()

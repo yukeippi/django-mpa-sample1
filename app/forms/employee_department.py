@@ -1,5 +1,5 @@
 from django import forms
-from app.models import EmployeeDepartment
+from app.models import Department, EmployeeDepartment
 
 
 # 社員に所属部門を追加するフォーム
@@ -15,7 +15,9 @@ class EmployeeDepartmentForm(forms.ModelForm):
         }
 
     # 社員はURLで決まるためdisabledにし、送信値ではなくinstanceの値を使う。
-    # fieldsから外すとModelFormが社員を含む一意制約の検証を飛ばすため、fieldsには残す
+    # fieldsから外すとModelFormが社員を含む一意制約の検証を飛ばすため、fieldsには残す。
+    # 部門の選択肢は会社名・部門名順に並べる(モデルにMeta.orderingを持たせないため、ここで指定する)
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['employee'].disabled = True
+        self.fields['department'].queryset = Department.objects.with_company().order_by('company__name', 'name')

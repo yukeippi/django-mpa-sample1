@@ -38,7 +38,9 @@ def show(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
         raise PermissionDenied
     return render(request, 'app/employee/show.html', {
         'employee': employee,
-        'employee_departments': employee.employee_departments.select_related('department__company'),
+        'employee_departments': employee.employee_departments.select_related('department__company').order_by(
+            'department__company__name', 'department__name'
+        ),
         'can_manage_departments': is_company_admin(request.user),
     })
 
