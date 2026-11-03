@@ -1,4 +1,5 @@
 import pytest
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from app.models import Company, Department, DepartmentHierarchy
 
@@ -54,3 +55,27 @@ class TestDepartmentHierarchyModel:
         hierarchy = DepartmentHierarchy.objects.create(department=child, parent_department=parent)
 
         assert str(hierarchy) == f'{child} (親: {parent})'
+
+    # 別の会社の部門は親部門にできないこと(full_clean()で親部門のエラーになる)
+    def test_parent_in_other_company_fails_full_clean(self):
+        department = Department.objects.create(company=Company.objects.create(name='サンプル株式会社'), name='営業部')
+        other_company_parent = Department.objects.create(
+            company=Company.objects.create(name='テスト工業株式会社'), name='本社'
+        )
+        hierarchy = DepartmentHierarchy(department=department, parent_department=other_company_parent)
+
+        with pytest.raises(ValidationError) as excinfo:
+            hierarchy.full_clean()
+
+        error = excinfo.value.error_dict['parent_department'][0]
+        assert error.code == 'department_hierarchy_parent_company_mismatch'
+        assert error.messages == ['親部門には同じ会社の部門を指定してください。']
+
+    # 同じ会社の部門は親部門にできること(full_clean()がエラーにならない)
+    def test_parent_in_same_company_passes_full_clean(self):
+        company = Company.objects.create(name='サンプル株式会社')
+        department = Department.objects.create(company=company, name='営業部')
+        parent = Department.objects.create(company=company, name='本社')
+        hierarchy = DepartmentHierarchy(department=department, parent_department=parent)
+
+        hierarchy.full_clean()

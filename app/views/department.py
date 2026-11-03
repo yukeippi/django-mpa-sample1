@@ -6,8 +6,9 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from app.lib.types import AuthenticatedHttpRequest
 from app.forms import DepartmentForm
-from app.models import Department
+from app.models import Department, DepartmentHierarchy
 from app.permissions.access import can_create, can_delete, can_display_create_form, can_edit, can_view
+from app.permissions.roles import is_company_admin
 
 MODEL_NAME = 'Department'
 
@@ -33,7 +34,17 @@ def show(request: AuthenticatedHttpRequest, pk: int) -> HttpResponse:
     department = get_object_or_404(Department, pk=pk)
     if not can_view(request.user, MODEL_NAME, department):
         raise PermissionDenied
-    return render(request, 'app/department/show.html', {'department': department})
+    hierarchy = DepartmentHierarchy.objects.select_related('parent_department__company').filter(
+        department=department
+    ).first()
+    return render(request, 'app/department/show.html', {
+        'department': department,
+        'parent_department': hierarchy.parent_department if hierarchy else None,
+        'child_departments': Department.objects.with_company().filter(
+            hierarchy__parent_department=department
+        ).order_by('name'),
+        'can_manage_hierarchy': is_company_admin(request.user),
+    })
 
 
 # 部門新規作成

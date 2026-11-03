@@ -7,6 +7,9 @@
     <h1 id="department-name" class="ds-h1">{{ department.name }}</h1>
     <div class="ds-actions">
         <a href="{% url 'app:department_index' %}" class="ds-btn">一覧に戻る</a>
+        {% if can_manage_hierarchy %}
+        <a href="{% url 'app:department_hierarchy_edit' department.pk %}" id="edit-department-hierarchy-link" class="ds-btn">親部門を変更</a>
+        {% endif %}
         <a href="{% url 'app:department_edit' department.pk %}" id="edit-department-link" class="ds-btn ds-btn-primary">編集</a>
         <a href="{% url 'app:department_delete' department.pk %}" id="delete-department-link" class="ds-btn ds-btn-danger">削除</a>
     </div>
@@ -17,6 +20,24 @@
         <div class="ds-detail-item">
             <dt class="ds-detail-label">会社</dt>
             <dd class="ds-detail-value" id="department-company">{{ department.company.name }}</dd>
+        </div>
+        <div class="ds-detail-item">
+            <dt class="ds-detail-label">親部門</dt>
+            <dd class="ds-detail-value" id="department-parent">{% if parent_department %}{{ parent_department }}{% else %}親部門はありません{% endif %}</dd>
+        </div>
+        <div class="ds-detail-item">
+            <dt class="ds-detail-label">子部門</dt>
+            <dd class="ds-detail-value">
+                {% if child_departments %}
+                <ul id="department-children">
+                    {% for child in child_departments %}
+                    <li>{{ child }}</li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p id="department-no-children">子部門はありません</p>
+                {% endif %}
+            </dd>
         </div>
         <div class="ds-detail-item">
             <dt class="ds-detail-label">所属社員</dt>
