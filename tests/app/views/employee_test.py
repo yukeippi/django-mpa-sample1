@@ -36,6 +36,15 @@ class TestEmployeeIndexView:
         assert response.status_code == 200
         assert sample_user.employee in response.context['employees']
 
+    # 一覧は社員番号順に並ぶこと
+    def test_index_is_ordered_by_employee_number(self, admin_client):
+        for employee_number in ['E0003', 'E0001', 'E0002']:
+            user = User.objects.create_user(username=employee_number, password='testpass123')
+            Employee.objects.create(user=user, employee_number=employee_number)
+
+        response = admin_client.get('/employees/')
+        assert [employee.employee_number for employee in response.context['employees']] == ['E0001', 'E0002', 'E0003']
+
 
 @pytest.mark.django_db
 class TestEmployeeShowView:

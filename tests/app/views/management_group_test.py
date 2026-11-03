@@ -24,6 +24,14 @@ class TestManagementGroupIndexView:
         assert response.status_code == 200
         assert len(response.context['management_groups']) == 1
 
+    # 一覧は名前順に並ぶこと
+    def test_index_is_ordered_by_name(self, admin_client):
+        for name in ['Cチーム', 'Aチーム', 'Bチーム']:
+            ManagementGroup.objects.create(name=name, is_admin=True)
+
+        response = admin_client.get('/management_groups/')
+        assert [group.name for group in response.context['management_groups']] == ['Aチーム', 'Bチーム', 'Cチーム']
+
 
 @pytest.mark.django_db
 class TestManagementGroupShowView:

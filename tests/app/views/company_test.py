@@ -48,6 +48,15 @@ class TestCompanyIndexView:
         assert len(response.context['companies']) == 1
 
 
+    # 一覧は会社名順に並ぶこと
+    def test_index_is_ordered_by_name(self, admin_client):
+        for name in ['C株式会社', 'A株式会社', 'B株式会社']:
+            Company.objects.create(name=name)
+
+        response = admin_client.get('/companies/')
+        assert [company.name for company in response.context['companies']] == ['A株式会社', 'B株式会社', 'C株式会社']
+
+
 @pytest.mark.django_db
 class TestCompanyShowView:
 
@@ -71,6 +80,15 @@ class TestCompanyShowView:
     def test_show_nonexistent_company_returns_404(self, admin_client):
         response = admin_client.get('/companies/9999/')
         assert response.status_code == 404
+
+    # 会社の部門は部門名順に並ぶこと
+    def test_show_departments_are_ordered_by_name(self, admin_client):
+        company = Company.objects.create(name='サンプル株式会社')
+        for name in ['C部', 'A部', 'B部']:
+            Department.objects.create(company=company, name=name)
+
+        response = admin_client.get(f'/companies/{company.id}/')
+        assert [department.name for department in response.context['departments']] == ['A部', 'B部', 'C部']
 
 
 @pytest.mark.django_db

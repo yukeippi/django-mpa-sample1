@@ -1,4 +1,6 @@
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from app.models import Task
 
 
@@ -43,6 +45,15 @@ class TestTaskIndexView:
         response = auth_client.get('/tasks/?page=2')
 
         assert len(response.context['tasks']) == 1
+
+    # 一覧は作成日時の新しい順に並ぶこと
+    def test_index_is_ordered_by_newest_created_at(self, auth_client):
+        first = Task.objects.create(title='First Task')
+        second = Task.objects.create(title='Second Task')
+        third = Task.objects.create(title='Third Task')
+
+        response = auth_client.get('/tasks/')
+        assert list(response.context['tasks']) == [third, second, first]
 
 
 @pytest.mark.django_db
@@ -528,6 +539,17 @@ class TestTaskApiView:
 
         assert response.status_code == 200
         assert len(response.json()) == 2
+
+    # 並び順を求めていないため、タスクの取得にORDER BYを付けないこと
+    def test_api_does_not_order_tasks(self, auth_client):
+        Task.objects.create(title='Task 1')
+
+        with CaptureQueriesContext(connection) as queries:
+            auth_client.get('/api/tasks/')
+
+        task_queries = [query['sql'] for query in queries if 'FROM "task"' in query['sql']]
+        assert len(task_queries) == 1
+        assert 'ORDER BY' not in task_queries[0]
 
     # GET以外のメソッドは405が返ること
     def test_api_post_returns_405(self, auth_client):

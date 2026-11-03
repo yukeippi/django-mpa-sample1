@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('app', '0014_django_standard_validation'),
+        ('app', '0015_remove_meta_ordering'),
     ]
 
     operations = [

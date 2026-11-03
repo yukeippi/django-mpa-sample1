@@ -17,9 +17,9 @@
         <div class="ds-detail-item">
             <dt class="ds-detail-label">部門</dt>
             <dd class="ds-detail-value">
-                {% if company.departments.all %}
+                {% if departments %}
                 <ul id="company-departments">
-                    {% for department in company.departments.all %}
+                    {% for department in departments %}
                     <li>{{ department.name }}</li>
                     {% endfor %}
                 </ul>
