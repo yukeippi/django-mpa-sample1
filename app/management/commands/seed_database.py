@@ -10,6 +10,7 @@ class Command(BaseCommand):
         seeds.employee.create()
         seeds.company.create()
         seeds.department.create()
+        seeds.department_hierarchy.create()
         seeds.management_group.create()
         seeds.employee_department.create()
 

@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from app.models.department import Department
 
@@ -28,3 +29,12 @@ class DepartmentHierarchy(models.Model):
 
     def __str__(self):
         return f'{self.department} (親: {self.parent_department})'
+
+    # 親部門は同じ会社の部門でなければならない(モデルをまたぐ整合性はDB制約で表現できないため、clean()で検証する)
+    def clean(self):
+        if self.department_id is None or self.parent_department_id is None:
+            return
+        if self.parent_department.company_id != self.department.company_id:
+            raise ValidationError({'parent_department': ValidationError(
+                '親部門には同じ会社の部門を指定してください。', code='department_hierarchy_parent_company_mismatch'
+            )})

@@ -43,4 +43,8 @@ urlpatterns = [
     path('departments/<int:pk>/', views.department.show, name='department_show'),
     path('departments/<int:pk>/edit/', views.department.edit, name='department_edit'),
     path('departments/<int:pk>/delete/', views.department.delete, name='department_delete'),
+    path(
+        'departments/<int:department_pk>/hierarchy/edit/',
+        views.department_hierarchy.edit, name='department_hierarchy_edit',
+    ),
 ]

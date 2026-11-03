@@ -1,5 +1,5 @@
 import pytest
-from app.models import Company, Department, EmployeeDepartment, ManagementGroup
+from app.models import Company, Department, DepartmentHierarchy, EmployeeDepartment, ManagementGroup
 
 DEPARTMENT_VIEWER_ALL = 1
 COMPANY_SCOPED_DEPARTMENT_MANAGER = 2
@@ -94,6 +94,64 @@ class TestDepartmentShowView:
     def test_show_nonexistent_department_returns_404(self, admin_client):
         response = admin_client.get('/departments/9999/')
         assert response.status_code == 404
+
+    # 親部門が「会社名 / 部門名」で表示されること
+    def test_show_displays_parent_department(self, admin_client):
+        company = Company.objects.create(name='サンプル株式会社')
+        department = Department.objects.create(company=company, name='営業部')
+        DepartmentHierarchy.objects.create(
+            department=department, parent_department=Department.objects.create(company=company, name='本社')
+        )
+
+        content = admin_client.get(f'/departments/{department.id}/').content.decode()
+
+        assert '<dd class="ds-detail-value" id="department-parent">サンプル株式会社 / 本社</dd>' in content
+
+    # 親部門が無い場合は「親部門はありません」と表示されること
+    def test_show_without_parent_shows_empty_message(self, admin_client):
+        department = Department.objects.create(company=Company.objects.create(name='サンプル株式会社'), name='営業部')
+
+        content = admin_client.get(f'/departments/{department.id}/').content.decode()
+
+        assert '親部門はありません' in content
+
+    # 子部門の一覧が部門名順に表示されること
+    def test_show_lists_child_departments_ordered_by_name(self, admin_client):
+        company = Company.objects.create(name='サンプル株式会社')
+        department = Department.objects.create(company=company, name='本社')
+        for name in ['C部', 'A部', 'B部']:
+            DepartmentHierarchy.objects.create(
+                department=Department.objects.create(company=company, name=name), parent_department=department
+            )
+
+        response = admin_client.get(f'/departments/{department.id}/')
+
+        assert [child.name for child in response.context['child_departments']] == ['A部', 'B部', 'C部']
+
+    # 子部門が無い場合は「子部門はありません」と表示されること
+    def test_show_without_children_shows_empty_message(self, admin_client):
+        department = Department.objects.create(company=Company.objects.create(name='サンプル株式会社'), name='営業部')
+
+        content = admin_client.get(f'/departments/{department.id}/').content.decode()
+
+        assert '子部門はありません' in content
+
+    # 全社管理者には「親部門を変更」が表示されること
+    def test_show_by_admin_shows_edit_hierarchy_link(self, admin_client):
+        department = Department.objects.create(company=Company.objects.create(name='サンプル株式会社'), name='営業部')
+
+        content = admin_client.get(f'/departments/{department.id}/').content.decode()
+
+        assert 'id="edit-department-hierarchy-link"' in content
+
+    # 部門を閲覧できても全社管理者でないユーザーには「親部門を変更」が表示されないこと
+    def test_show_by_non_admin_hides_edit_hierarchy_link(self, sample_user, auth_client):
+        department = Department.objects.create(company=Company.objects.create(name='サンプル株式会社'), name='営業部')
+        _grant(sample_user, DEPARTMENT_VIEWER_ALL, 'テスト工業株式会社')
+
+        content = auth_client.get(f'/departments/{department.id}/').content.decode()
+
+        assert 'id="edit-department-hierarchy-link"' not in content
 
 
 @pytest.mark.django_db
