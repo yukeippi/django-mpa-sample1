@@ -160,7 +160,7 @@ class ManagementGroup(models.Model):
 
 ### Foreign Key Naming Rules
 
-外部キー(`ForeignKey`/`OneToOneField`)のカラム名は、Railsの規約に合わせて`<参照先モデル名のスネークケース>_id`にする。Djangoはフィールド名に`_id`を付けたものをカラム名にするため、フィールド名を参照先モデル名のスネークケースにすればこの形になる。
+外部キー(`ForeignKey`/`OneToOneField`)のカラム名は、`<参照先モデル名のスネークケース>_id`にする。Djangoはフィールド名に`_id`を付けたものをカラム名にするため、フィールド名を参照先モデル名のスネークケースにすればこの形になる。
 
 - フィールド名には`_id`を付けない(`department_id = models.ForeignKey(...)`とするとカラム名が`department_id_id`になる)
 - `db_column`でカラム名を変えない。フィールド名とカラム名の対応がずれ、コードとDBを見比べにくくなる
